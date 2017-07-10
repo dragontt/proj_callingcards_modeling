@@ -1,0 +1,14 @@
+--------------------------------------------
+Calling Cards RNA-seq data analysis pipeline
+--------------------------------------------
+1. cc_filter_reads: filter and sort raw reads into the correponding sample files based on the barcode table.
+		The header of this barcode file is: experiment name, primer barcode, transposon barcode.
+		The expected output is the 
+2. map_reads: use novo aligner to map the reads for each sample.
+3. make_gnashyfile: make gnashy file from mapped reads.
+		The output contains 3 columns: chromosome, location, reads
+4. find_sig_promoter (optional) 
+
+Note: 
+(06/20/2017) I wasn't able to run cc_filter_reads using Rob's Undetermined_S0_L001_R1_001.fastq and Undetermined_S0_L001_R2_001.fastq. And Rob said it's OK to use single-end reads data that he had processed. So I used the processed *.fasta files for map_reads step. 
+
