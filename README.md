@@ -4,11 +4,36 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 ### Example Usage
 
-1. Map transposition data to gene targets, whose promoters range from (-)1000bp upstream to (+)100bp downstream from the ATG. (Input: three-column gnashy files)
+1. Load modules
 
-    ```
-    cd scripts
-    python compute_orf_hops.py -r ../resources/ -u -1000 -d 100 -o ../output/
-    ```
+	```
+	module load pandas
+	module load scipy
+	module load scikit-learn
+	```
 
-2. 
+2. Map transposition data to gene targets, whose promoters range from (-)1000bp upstream to (+)100bp downstream from the ATG. (Input: three-column gnashy files)
+
+	```
+	cd scripts
+	python compute_orf_hops.py -r ../resources/ -u -1000 -d 100 -o ../output/
+	```
+
+3. Call peaks, allowing the maximum within cluster distance to be 200
+
+	```
+	python call_peaks.py ../output/ 200
+	``` 
+
+4. Create feature matrix for modeling peaks (for Approach (2))
+
+	```
+	python generate_features.py -m highest_peaks -i ../output/ -o ../output/
+	```
+
+5. Fit tree-based model and visualize data
+	
+	```
+	python fit_model.py -m tree_rank_highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt
+	dot -Tpng ../output/tree_combined-all.dot -o ../output/tree_combined-all.png
+	```
