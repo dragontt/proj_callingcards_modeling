@@ -121,8 +121,8 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_dist=-5000):
 	## create peak dictionary
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
-	# peak_feature_names = ["TPH", "RPH", "Dist"]
-	peak_feature_names = feature_dict[feature_dict.keys()[0]]["1"].keys()
+	# peak_feature_names = ['Dist', 'RPH', 'TPH']
+	peak_feature_names = sorted(feature_dict[feature_dict.keys()[0]]["1"].keys())
 	feature_mtx = []
 	sorted_orfs = sorted(feature_dict.keys())
 	for orf in sorted_orfs:
@@ -131,7 +131,7 @@ def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_di
 		## iteratively append peaks, sorted by height
 		for i in range(num_peaks): 
 			if i >= len(sorted_peaks): ## append null peaks
-				feature_row += [0,0,max_dist]
+				feature_row += [max_dist,0,0]
 			else: ## append valid peaks
 				peak_dict = feature_dict[orf][sorted_peaks[i]]
 				feature_row += [peak_dict[x] for x in peak_feature_names]
