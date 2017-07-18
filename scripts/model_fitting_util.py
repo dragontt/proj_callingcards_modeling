@@ -9,11 +9,14 @@ from sklearn.preprocessing import scale
 from sklearn.model_selection import cross_val_score
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from scipy.stats import ttest_ind, mannwhitneyu
+from sklearn.ensemble import RandomForestClassifier
 
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
+from sklearn.model_selection import KFold
+
+from scipy.stats import ttest_ind, mannwhitneyu
 
 
 def rank_binned_features(features, X, y, method, cv=0, verbose=False):
@@ -86,6 +89,30 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 						rounded=True, proportion=False, filled=True, node_ids=True, 
 						class_names=np.array(model.classes_, dtype=str))
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
+
+
+def model_holdout_feature(X, y, features, sample_name, k=10):
+	"""
+	Use K-1 folds of samples to train a model, then use the holdout samples 
+	to test the model. In testing, one feature will be varied within a range
+	of values, while other features will be hold as they are. Thus the testing 
+	accuracy is modeled as a function of the holdout feature.
+	"""
+	model = RandomForestClassifier(n_estimators=100, max_depth=5)
+	k_fold = KFold(k)
+	for k, (train, test) in enumerate(k_fold.split(X, y)):
+		if k == 0:
+			model.fit(X[train], y[train])
+			for i in range(len(features)):
+				X_te = X[test]
+				step = (max(X[:,i])-min(X[:,i]))/10.
+				feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step)
+				scores = []
+				for v in feature_values:
+					X_te[:,i] = np.ones(X_te.shape[0])*v
+					scores.append(model.score(X_te, y[test]))
+				print features[i], feature_values, scores
+
 
 
 def prepare_datasets(file_cc, file_de, thld_lfc, thld_p):

@@ -40,10 +40,11 @@ def main(argv):
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name)
+		np.savetxt('tmp.txt', cc_data, delimiter='\t')
 		## print label information
 		print_chance(labels)
 		## rank features
-		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
+		model_holdout_feature(cc_data, labels, cc_features, sample_name)
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
