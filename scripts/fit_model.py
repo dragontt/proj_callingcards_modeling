@@ -16,7 +16,7 @@ python fit_model.py -m tree_rank_highest_peaks -c ../output/ -o ../resources/opt
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("-m","--ranking_method", help="choose from ['tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
+    parser.add_argument("-m","--ranking_method", help="choose from ['holdout_feature_variance', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
     parser.add_argument("-c","--cc_dir")
     parser.add_argument("-d","--de_dir")
     parser.add_argument("-o","--optimized_labels", default=None)
@@ -33,7 +33,32 @@ def main(argv):
 		optimized_labels = parse_optimized_labels(parsed.optimized_labels)
 		valid_sample_names = optimized_labels.keys()
 
-	if parsed.ranking_method == "tree_rank_linked_peaks":
+
+	if parsed.ranking_method == "holdout_feature_variance":
+		## parse input
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
+		sample_name = 'combined-all'
+		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
+												valid_sample_names, sample_name)
+		## print label information
+		print_chance(labels)
+		## rank features
+		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
+	
+
+	elif parsed.ranking_method == "tree_rank_highest_peaks":
+		## parse input
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
+		sample_name = 'combined-all'
+		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
+												valid_sample_names, sample_name)
+		## print label information
+		print_chance(labels)
+		## rank features
+		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
+
+
+	elif parsed.ranking_method == "tree_rank_linked_peaks":
 		cc = {}
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.linked_peaks.json")
 		for file_cc in files_cc: ## remove wildtype samples
@@ -85,42 +110,6 @@ def main(argv):
 				break
 
 			iteration += 1 ## build next tree
-	
-
-	elif parsed.ranking_method == "tree_rank_highest_peaks":
-		## parse input
-		data_collection = {}
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
-		for file_cc in files_cc: ## remove wildtype samples
-			sample_name = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
-			if (sample_name in valid_sample_names) and (not sample_name.startswith('BY4741')):
-				print '... loading %s' % sample_name
-				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sample_name])
-				data_collection[sample_name] = {'cc_data': cc_data, 
-												'labels': labels,
-												'orfs': orfs}
-		
-		## combine samples
-		data_collection = combine_samples(data_collection, len(cc_features))
-		sample_name = 'combined-all'
-		print '\n... working on %s\n' % sample_name
-		labels = data_collection[sample_name]['labels']
-		cc_data = data_collection[sample_name]['cc_data']
-		orfs = data_collection[sample_name]['orfs']
-		## save internal data
-		# tmp_out = np.hstack((np.hstack((np.array(orfs)[:,1][np.newaxis].T, labels[np.newaxis].T)), cc_data))
-		# tmp_out = np.vstack((np.append(['orf','labels'],cc_features)[np.newaxis], tmp_out))
-		# np.savetxt('../output/cc_data_matrix.txt', tmp_out, fmt="%s", delimiter="\t")
-
-		## print label information
-		neg_labels = len(labels[labels==-1])
-		pos_labels = len(labels[labels==1])
-		total_labels = float(len(labels))
-		chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
-		print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
-
-		## rank features
-		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
 
 
 	elif parsed.ranking_method in ['sequential_forward_selection', 'sequential_backward_selection']:
