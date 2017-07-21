@@ -5,6 +5,7 @@ import numpy as np
 import argparse
 import glob
 from model_fitting_util import *
+import pickle
 
 """
 Example usage:
@@ -22,6 +23,7 @@ def parse_args(argv):
     parser.add_argument("-o","--optimized_labels", default=None)
     parser.add_argument("-l","--threshold_log2FC", type=float)
     parser.add_argument("-p","--threshold_adjustedP", type=float)
+    parser.add_argument("-f","--fig_filename")
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -40,11 +42,16 @@ def main(argv):
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name)
-		np.savetxt('tmp.txt', cc_data, delimiter='\t')
 		## print label information
-		print_chance(labels)
-		## rank features
-		model_holdout_feature(cc_data, labels, cc_features, sample_name)
+		chance = calculate_chance(labels)
+		## model the holdout feature
+		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
+													labels, cc_features, sample_name, 
+													10, 20, True)
+		plot_holdout_features(scores_test, scores_holdout, features_var, 
+							parsed.fig_filename, "accu")
+		plot_holdout_features(scores_test, scores_holdout, features_var, 
+							parsed.fig_filename, "sens_n_spec")
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
@@ -54,7 +61,7 @@ def main(argv):
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name)
 		## print label information
-		print_chance(labels)
+		chance = calculate_chance(labels)
 		## rank features
 		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
 

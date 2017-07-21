@@ -10,6 +10,7 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 	module load pandas
 	module load scipy
 	module load scikit-learn
+    module load matplotlib
 	```
 
 2. Map transposition data to gene targets, whose promoters range from (-)1000bp upstream to (+)100bp downstream from the ATG. (Input: three-column gnashy files)

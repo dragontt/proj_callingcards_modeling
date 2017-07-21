@@ -5,18 +5,22 @@ import numpy as np
 import yaml
 
 from sklearn import tree
-from sklearn.preprocessing import scale
-from sklearn.model_selection import cross_val_score
+from sklearn.preprocessing import scale, StandardScaler
+from sklearn.model_selection import cross_val_score, StratifiedKFold, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
+from sklearn.svm import SVC, NuSVC, LinearSVC
 
 from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from sklearn.model_selection import KFold
-
+from scipy.stats import randint
 from scipy.stats import ttest_ind, mannwhitneyu
+
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import matplotlib.gridspec as gridspec
 
 
 def rank_binned_features(features, X, y, method, cv=0, verbose=False):
@@ -91,28 +95,157 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
 
 
-def model_holdout_feature(X, y, features, sample_name, k=10):
+def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hyparam=False, verbose=True):
 	"""
 	Use K-1 folds of samples to train a model, then use the holdout samples 
 	to test the model. In testing, one feature will be varied within a range
 	of values, while other features will be hold as they are. Thus the testing 
 	accuracy is modeled as a function of the holdout feature.
 	"""
-	model = RandomForestClassifier(n_estimators=100, max_depth=5)
-	k_fold = KFold(k)
-	for k, (train, test) in enumerate(k_fold.split(X, y)):
-		if k == 0:
-			model.fit(X[train], y[train])
-			for i in range(len(features)):
-				X_te = X[test]
-				step = (max(X[:,i])-min(X[:,i]))/10.
-				feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step)
-				scores = []
-				for v in feature_values:
-					X_te[:,i] = np.ones(X_te.shape[0])*v
-					scores.append(model.score(X_te, y[test]))
-				print features[i], feature_values, scores
+	## define K folds for CV
+	k_fold = StratifiedKFold(k, shuffle=True, random_state=000)
+	scores_test = {"accu":[], "sens":[], "spec":[]}
+	scores_holdout = {"accu":{}, "sens":{}, "spec":{}}
+	features_var = {}
 
+	## perform CV
+	for k, (train, test) in enumerate(k_fold.split(X, y)):
+		## define algo
+		if optimize_hyparam:
+			hyparam_distr = {"n_estimators": range(20,201,20),
+							"max_depth": randint(1,21),
+							"min_samples_leaf": randint(1,11)}
+			model  = RandomizedSearchCV(RandomForestClassifier(), 
+										param_distributions=hyparam_distr,
+										n_iter=20,
+										n_jobs=10)
+			print model.best_params_
+		else:
+			hyparam = {"n_estimators": 100, 
+						"max_depth": None}
+			model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
+										max_depth=hyparam["max_depth"]) 
+			# model = NuSVC(nu=.5, kernel="rbf")
+			# model = LinearSVC()
+			# model = GradientBoostingClassifier(learning_rate=0.01, 
+			# 									n_estimators=100,
+			# 									subsample=.8)
+			# model = AdaBoostClassifier(n_estimators=100, 
+			# 							learning_rate=0.1)
+
+		## train the model
+		model.fit(X[train], y[train]) 
+		## test without varying feature
+		accu_te = model.score(X[test], y[test])
+		sens_te, spec_te = cal_sens_n_spec(y[test], model.predict(X[test])) 
+		scores_test["accu"].append(accu_te)
+		scores_test["sens"].append(sens_te)
+		scores_test["spec"].append(spec_te)
+		if verbose:
+			print "... cv fold %d" % k 
+			print "   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te)
+			# print "  ", np.unique(y[test], return_counts=True)
+
+		for i in range(len(features)): 
+			X_te = X[test]
+			## vary the value of holdout feature
+			step = (max(X[:,i])-min(X[:,i]))/float(c) 
+			feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step) 
+			accu_ho = []
+			sens_ho = []
+			spec_ho = []
+			for v in feature_values:
+				X_te[:,i] = np.ones(X_te.shape[0])*v
+				accu_ho.append(model.score(X_te, y[test]))
+				sens_tmp, spec_tmp = cal_sens_n_spec(y[test], model.predict(X_te))
+				sens_ho.append(sens_tmp)
+				spec_ho.append(spec_tmp)
+			## store accuracy metrics 
+			try:	
+				scores_holdout["accu"][features[i]].append(accu_ho)
+				scores_holdout["sens"][features[i]].append(sens_ho)
+				scores_holdout["spec"][features[i]].append(spec_ho)
+			except KeyError:
+				scores_holdout["accu"][features[i]] = [accu_ho]
+				scores_holdout["sens"][features[i]] = [sens_ho]
+				scores_holdout["spec"][features[i]] = [spec_ho]
+				features_var[features[i]] = feature_values
+			# if verbose:
+			# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
+
+	return (scores_test, scores_holdout, features_var)
+
+
+def plot_holdout_features(scores_test, scores_holdout, features_var, filename, metric="accu"):
+	features = sorted(features_var.keys())
+	## define subplots
+	fig = plt.figure(num=None, figsize=(10, 7), dpi=300)
+	num_cols = 3
+	num_rows = len(features)/num_cols
+	for i in range(num_rows):
+		for j in range(num_cols):
+			k = num_cols*i+j ## feature index
+
+			if metric == "accu":
+				accu_ho = np.array(scores_holdout["accu"][features[k]])
+				num_var = accu_ho.shape[1]
+				## relative to testing acc
+				accu_ho = accu_ho - np.repeat(np.array(scores_test["accu"])[np.newaxis].T, 
+												num_var, axis=1) 
+				accu_ho_med = np.median(accu_ho, axis=0)
+				accu_ho_max = np.max(accu_ho, axis=0)
+				accu_ho_min = np.min(accu_ho, axis=0)
+
+				## make plots
+				ax = fig.add_subplot(num_rows, num_cols, k+1)
+				ax.fill_between(features_var[features[k]], accu_ho_min, accu_ho_max, facecolor="blue", alpha=.25)
+				ax.plot(features_var[features[k]], accu_ho_med, 'k', linewidth=2)
+				ax.set_title('%s' % features[k])
+				ax.set_ylim(-.5, .5)
+
+			elif metric == "sens_n_spec":
+				sens_ho = np.array(scores_holdout["sens"][features[k]])
+				spec_ho = np.array(scores_holdout["spec"][features[k]])
+				num_var = sens_ho.shape[1]
+				## relative to testing acc
+				sens_ho = sens_ho - np.repeat(np.array(scores_test["sens"])[np.newaxis].T, 
+												num_var, axis=1)
+				sens_ho_med = np.median(sens_ho, axis=0)
+				sens_ho_max = np.max(sens_ho, axis=0)
+				sens_ho_min = np.min(sens_ho, axis=0)
+				spec_ho = spec_ho - np.repeat(np.array(scores_test["spec"])[np.newaxis].T, 
+												num_var, axis=1) 
+				spec_ho_med = np.median(spec_ho, axis=0)
+				spec_ho_max = np.max(spec_ho, axis=0)
+				spec_ho_min = np.min(spec_ho, axis=0)
+
+				## make plots
+				ax = fig.add_subplot(num_rows, num_cols, k+1)
+				ax.fill_between(features_var[features[k]], sens_ho_min, sens_ho_max, 
+								facecolor="#336666", alpha=.25)
+				ax.plot(features_var[features[k]], sens_ho_med, "#336666", linewidth=2)
+				ax.fill_between(features_var[features[k]], spec_ho_min, spec_ho_max, 
+								facecolor="#6d212d", alpha=.25)
+				ax.plot(features_var[features[k]], spec_ho_med, "#6d212d", linewidth=2)
+				ax.set_title('%s' % features[k])
+				ax.set_ylim(-.5, .5)
+
+	plt.tight_layout()
+	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
+
+
+def cal_sens_n_spec(y, y_pred):
+	tp, fp, fn, tn = 0,0,0,0
+	for i in range(len(y)):
+		if y[i] == 1 and y_pred[i] == 1:
+			tp += 1
+		elif y[i] == -1 and y_pred[i] == 1:
+			fp += 1
+		elif y[i] == 1 and y_pred[i] == -1:
+			fn += 1
+		elif y[i] == -1 and y_pred[i] == -1:
+			tn += 1
+	return (float(tp)/(tp+fn), float(tn)/(tn+fp))
 
 
 def prepare_datasets(file_cc, file_de, thld_lfc, thld_p):
@@ -271,12 +404,14 @@ def process_data_collection(files_cc, optimized_labels, valid_sample_names, samp
 	return (labels, cc_data, cc_features)
 
 
-def print_chance(labels):
+def calculate_chance(labels, verbose=True):
 	neg_labels = len(labels[labels==-1])
 	pos_labels = len(labels[labels==1])
 	total_labels = float(len(labels))
 	chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
-	print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
+	if verbose:
+		print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
+	return chance
 
 
 def rank_features_RFE(features, X, y, estimator_type, cv=False):
