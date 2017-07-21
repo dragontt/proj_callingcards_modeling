@@ -11,6 +11,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, NuSVC, LinearSVC
+from sklearn.neighbors import KNeighborsClassifier
 
 from sklearn.pipeline import make_pipeline
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
@@ -115,23 +116,31 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 			hyparam_distr = {"n_estimators": range(20,201,20),
 							"max_depth": randint(1,21),
 							"min_samples_leaf": randint(1,11)}
-			model  = RandomizedSearchCV(RandomForestClassifier(), 
+			model = RandomizedSearchCV(RandomForestClassifier(), 
 										param_distributions=hyparam_distr,
 										n_iter=20,
 										n_jobs=10)
-			print model.best_params_
+			model.fit(X[train],y[train])
+			hyparam = model.best_params_
+			print hyparam
 		else:
-			hyparam = {"n_estimators": 100, 
-						"max_depth": None}
-			model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
-										max_depth=hyparam["max_depth"]) 
-			# model = NuSVC(nu=.5, kernel="rbf")
-			# model = LinearSVC()
-			# model = GradientBoostingClassifier(learning_rate=0.01, 
-			# 									n_estimators=100,
-			# 									subsample=.8)
-			# model = AdaBoostClassifier(n_estimators=100, 
-			# 							learning_rate=0.1)
+			hyparam = {"n_estimators": 20, 
+						"max_depth": None, 
+						"min_samples_leaf": 1}
+
+		## define model with desired hyperparameters
+		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
+										max_depth=hyparam["max_depth"],
+										min_samples_leaf=hyparam["min_samples_leaf"],
+										class_weight="balanced")
+		# model = KNeighborsClassifier() 
+		# model = NuSVC(nu=.5, kernel="rbf")
+		# model = LinearSVC()
+		# model = GradientBoostingClassifier(learning_rate=0.01, 
+		# 									n_estimators=100,
+		# 									subsample=.8)
+		# model = AdaBoostClassifier(n_estimators=100, 
+		# 							learning_rate=0.1)
 
 		## train the model
 		model.fit(X[train], y[train]) 
@@ -150,7 +159,9 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 			X_te = X[test]
 			## vary the value of holdout feature
 			step = (max(X[:,i])-min(X[:,i]))/float(c) 
-			feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step) 
+			feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step)
+			# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(c)
+			# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
 			accu_ho = []
 			sens_ho = []
 			spec_ho = []
