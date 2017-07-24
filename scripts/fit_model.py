@@ -11,13 +11,14 @@ import pickle
 Example usage:
 module load scipy
 module load scikit-learn
-module load matplotlib/1.4.3
-python fit_model.py -m tree_rank_highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt 
+module load matplotlib
+
+python fit_model.py -m holdout_feature_variation -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
 """
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("-m","--ranking_method", help="choose from ['holdout_feature_variance', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
+    parser.add_argument("-m","--ranking_method", help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
     parser.add_argument("-c","--cc_dir")
     parser.add_argument("-d","--de_dir")
     parser.add_argument("-o","--optimized_labels", default=None)
@@ -36,7 +37,7 @@ def main(argv):
 		valid_sample_names = optimized_labels.keys()
 
 
-	if parsed.ranking_method == "holdout_feature_variance":
+	if parsed.ranking_method == "holdout_feature_variation":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
 		sample_name = 'combined-all'
@@ -52,6 +53,8 @@ def main(argv):
 							parsed.fig_filename, "accu")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.fig_filename, "sens_n_spec")
+		plot_holdout_features(scores_test, scores_holdout, features_var, 
+							parsed.fig_filename, "prob_DE")
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":

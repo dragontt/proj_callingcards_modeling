@@ -104,9 +104,9 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 	accuracy is modeled as a function of the holdout feature.
 	"""
 	## define K folds for CV
-	k_fold = StratifiedKFold(k, shuffle=True, random_state=000)
-	scores_test = {"accu":[], "sens":[], "spec":[]}
-	scores_holdout = {"accu":{}, "sens":{}, "spec":{}}
+	k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
+	scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
+	scores_holdout = {"accu":{}, "sens":{}, "spec":{}, "prDE":{}}
 	features_var = {}
 
 	## perform CV
@@ -150,13 +150,18 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 		scores_test["accu"].append(accu_te)
 		scores_test["sens"].append(sens_te)
 		scores_test["spec"].append(spec_te)
+		scores_test["prDE"] += list(model.predict_proba(X[test])[:,1])
 		if verbose:
 			print "... cv fold %d" % k 
 			print "   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te)
+			# pred_probs = model.predict_proba(X[test])
+			# pred_class = model.predict(X[test])
+			# for i in range(X[test].shape[0]):
+			# 	print "   ", y[test][i], pred_probs[i,:], pred_class[i]
 			# print "  ", np.unique(y[test], return_counts=True)
 
 		for i in range(len(features)): 
-			X_te = X[test]
+			X_teho = X[test]
 			## vary the value of holdout feature
 			step = (max(X[:,i])-min(X[:,i]))/float(c) 
 			feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step)
@@ -165,22 +170,27 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 			accu_ho = []
 			sens_ho = []
 			spec_ho = []
+			prDE_ho = np.empty((X_teho.shape[0],0))
 			for v in feature_values:
-				X_te[:,i] = np.ones(X_te.shape[0])*v
-				accu_ho.append(model.score(X_te, y[test]))
-				sens_tmp, spec_tmp = cal_sens_n_spec(y[test], model.predict(X_te))
+				X_teho[:,i] = np.ones(X_teho.shape[0])*v
+				accu_ho.append(model.score(X_teho, y[test]))
+				sens_tmp, spec_tmp = cal_sens_n_spec(y[test], model.predict(X_teho))
+				prDE_tmp = model.predict_proba(X_teho)[:,1]
 				sens_ho.append(sens_tmp)
 				spec_ho.append(spec_tmp)
+				prDE_ho = np.hstack((prDE_ho, prDE_tmp[np.newaxis].T))
 			## store accuracy metrics 
 			try:	
 				scores_holdout["accu"][features[i]].append(accu_ho)
 				scores_holdout["sens"][features[i]].append(sens_ho)
 				scores_holdout["spec"][features[i]].append(spec_ho)
+				scores_holdout["prDE"][features[i]] = np.vstack((scores_holdout["prDE"][features[i]], prDE_ho))
 			except KeyError:
+				features_var[features[i]] = feature_values
 				scores_holdout["accu"][features[i]] = [accu_ho]
 				scores_holdout["sens"][features[i]] = [sens_ho]
 				scores_holdout["spec"][features[i]] = [spec_ho]
-				features_var[features[i]] = feature_values
+				scores_holdout["prDE"][features[i]] = prDE_ho
 			# if verbose:
 			# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
 
@@ -240,6 +250,27 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 				ax.plot(features_var[features[k]], spec_ho_med, "#6d212d", linewidth=2)
 				ax.set_title('%s' % features[k])
 				ax.set_ylim(-.5, .5)
+
+			elif metric == "prob_DE":
+				prDE_ho = np.array(scores_holdout["prDE"][features[k]])
+				num_var = prDE_ho.shape[1]
+				## relative to testing acc
+				prDE_ho_med = np.median(prDE_ho, axis=0)
+				prDE_ho_max = np.max(prDE_ho, axis=0)
+				prDE_ho_min = np.min(prDE_ho, axis=0)
+				prDE_ho_pctl = [np.percentile(prDE_ho, 2.5, axis=0), 
+								np.percentile(prDE_ho, 97.5, axis=0)]
+
+				## make plots
+				ax = fig.add_subplot(num_rows, num_cols, k+1)
+				# ax.fill_between(features_var[features[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
+				ax.fill_between(features_var[features[k]], prDE_ho_pctl[0], prDE_ho_pctl[1], facecolor="#0066cc", alpha=.25)
+				ax.plot(features_var[features[k]], prDE_ho_med, "#0066cc", linewidth=2)
+				ax.set_title('%s' % features[k])
+				ax.set_ylim(0, 1)
+
+			else:
+				sys.exit("No such metric to plot")
 
 	plt.tight_layout()
 	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
