@@ -17,7 +17,7 @@ from bayes_opt import BayesianOptimization
 
 from sklearn.pipeline import make_pipeline
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
-from scipy.stats import randint
+from scipy.stats import randint, uniform
 from scipy.stats import ttest_ind, mannwhitneyu
 
 import matplotlib
@@ -98,7 +98,7 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
 
 
-def model_holdout_feature(X, y, features, sample_name, k=10, c=20, opt_param=False, verbose=True):
+def model_holdout_feature(X, y, features, sample_name, classifier, k=10, c=20, opt_param=False, verbose=True):
 	"""
 	Use K-1 folds of samples to train a model, then use the holdout samples 
 	to test the model. In testing, one feature will be varied within a range
@@ -115,7 +115,7 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, opt_param=Fal
 	## perform CV
 	for k, (train, test) in enumerate(k_fold.split(X, y)):
 		## construct model 
-		model = construct_model(X[train], y[train], opt_param)
+		model = construct_model(X[train], y[train], classifier, opt_param)
 		## train the model
 		model.fit(X[train], y[train]) 
 		## test without varying feature
@@ -137,8 +137,11 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, opt_param=Fal
 		for i in range(len(features)): 
 			X_teho = X[test]
 			## vary the value of holdout feature
-			step = (max(X[:,i])-min(X[:,i]))/float(c) 
-			feature_values = np.arange(min(X[:,i]), max(X[:,i])+step, step)
+			# f_max = max(X[:,i])
+			f_max = max(X[:,i]) if features[i].endswith("Dist") else np.percentile(X[:,i], 95)
+			f_min = min(X[:,i])
+			step = (f_max-f_min)/float(c) 
+			feature_values = np.arange(f_min, f_max+step, step)
 			# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(c)
 			# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
 			accu_ho = []
@@ -171,63 +174,124 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, opt_param=Fal
 	return (scores_test, scores_holdout, features_var)
 
 
-def construct_model(X, y, opt_param=False):
-	if opt_param: 
-		## hyperparameter opitimization
-		use_BO = True
-		hyparam = optimize_model_hyparam(X, y, use_BO)
-		print hyparam
-	else:
-		hyparam = {"n_estimators": 20, 
-					"max_depth": None, 
-					"min_samples_leaf": 1}
+def construct_model(X, y, classifier, opt_param=False):
+	"""
+	classifier - chose from ["RandomForestClassifier", 
+							"GradientBoostingClassifier"]
+	opt_param - use Bayesian Optimization or Random Search to tune the hyperparameters
+	"""
+	if classifier == "RandomForestClassifier":
+		if opt_param: 
+			## hyperparameter opitimization
+			use_BO = False
+			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
+			print hyparam
+		else:
+			hyparam = {"n_estimators": 20, 
+						"max_depth": None, 
+						"min_samples_leaf": 1}
+		## build model with desired hyperparameters
+		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
+										max_depth=hyparam["max_depth"],
+										min_samples_leaf=hyparam["min_samples_leaf"],
+										class_weight="balanced")
 
-	## build model with desired hyperparameters
-	model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
-									max_depth=hyparam["max_depth"],
-									min_samples_leaf=hyparam["min_samples_leaf"],
-									class_weight="balanced")
+	elif classifier == "GradientBoostingClassifier":
+		if opt_param: 
+			## hyperparameter opitimization
+			use_BO = True
+			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
+			print hyparam
+		else:
+			hyparam = {"n_estimators": 20, 
+						"learning_rate": 0.05, 
+						"subsample": 1.0,
+						"min_samples_leaf": 1}
+		## build model with desired hyperparameters
+		model = GradientBoostingClassifier(n_estimators=hyparam["n_estimators"],
+											learning_rate=hyparam["learning_rate"],
+											subsample=hyparam["subsample"],
+											min_samples_leaf=hyparam["min_samples_leaf"],
+											class_weight="balanced")
+	## other potential classifier
 	# model = KNeighborsClassifier() 
 	# model = NuSVC(nu=.5, kernel="rbf")
 	# model = LinearSVC()
-	# model = GradientBoostingClassifier(learning_rate=0.01, 
-	# 									n_estimators=100,
-	# 									subsample=.8)
 	# model = AdaBoostClassifier(n_estimators=100, 
 	# 							learning_rate=0.1)
-	return
+	return model
 
 
-def optimize_model_hyparam(X, y, use_BO):
+def optimize_model_hyparam(X, y, classifier, use_BO):
 	## define inner functions
 	def rf_cv_score(n_estimators, max_depth, min_samples_leaf):
 		cv_model = RandomForestClassifier(n_estimators=int(n_estimators), 
 											max_depth=int(max_depth), 
 											min_samples_leaf=int(min_samples_leaf))
-		cv_score = cross_val_score(cv_model, X, y,
-									scoring="f1", cv=5, n_jobs=5).mean()
+		cv_score = cross_val_score(cv_model, X, y, scoring="accuracy", 
+									cv=5, n_jobs=5).mean()
 		return cv_score
 
-	if use_BO:
-		gp_params = {"alpha": 1e-5}
-		hyparam_distr = {"n_estimators": (20,201),
-						"max_depth": (1,21),
-						"min_samples_leaf": (1,11)}
-		model = BayesianOptimization(rf_cv_score, hyparam_distr, verbose=1)
-		model.maximize(init_points=5, n_iter=25, **gp_params)
-		hyparam = model.res["max"]["max_params"]
-		for k in hyparam.keys():
-			hyparam[k] = int(hyparam[k])
+	def gb_cv_score(n_estimators, learning_rate, subsample, min_samples_leaf):
+		cv_model = GradientBoostingClassifier(n_estimators=int(n_estimators), 
+											learning_rate=learning_rate,
+											subsample=subsample, 
+											min_samples_leaf=int(min_samples_leaf))
+		cv_score = cross_val_score(cv_model, X, y, scoring="accuracy", 
+									cv=5, n_jobs=5).mean()
+		return cv_score
+
+	## tune model hyperparameters
+	if classifier == "RandomForestClassifier":
+		if use_BO:
+			gp_params = {"alpha": 1e-5}
+			hyparam_distr = {"n_estimators": (20,200),
+							"max_depth": (1,20),
+							"min_samples_leaf": (1,20)}
+			model = BayesianOptimization(rf_cv_score, hyparam_distr, verbose=1)
+			model.maximize(init_points=10, n_iter=25, **gp_params)
+			hyparam = model.res["max"]["max_params"]
+			for k in hyparam.keys():
+				hyparam[k] = int(hyparam[k])
+		else:
+			hyparam_distr = {"n_estimators": range(20,201,20),
+								"max_depth": randint(1,21),
+								"min_samples_leaf": randint(1,11)}
+			model = RandomizedSearchCV(RandomForestClassifier(), 
+										param_distributions=hyparam_distr,
+										n_iter=50, n_jobs=10)
+			model.fit(X, y)
+			hyparam = model.best_params_
+
+	elif classifier == "GradientBoostingClassifier":
+		if use_BO:
+			gp_params = {"alpha": 1e-5}
+			hyparam_distr = {"n_estimators": (20,200),
+							"learning_rate": (0.005, 0.5),
+							"subsample": (0.5, 1.0),
+							"min_samples_leaf": (1,20)}
+			model = BayesianOptimization(gb_cv_score, hyparam_distr, verbose=1)
+			model.explore({"n_estimators": np.linspace(20,200,5),
+							"learning_rate": 5*np.logspace(-4, -1, num=4, base=10),
+							"subsample": np.linspace(0.5,1.0,5),
+							"min_samples_leaf": (1,20)})
+			model.maximize(init_points=10, n_iter=25, **gp_params)
+			hyparam = model.res["max"]["max_params"]
+			for k in hyparam.keys():
+				hyparam[k] = int(hyparam[k])
+		else:
+			hyparam_distr = {"n_estimators": range(20,201,20),
+							"learning_rate": uniform(0.001, 0.5),
+							"subsample": uniform(0.5, 1.0),
+							"min_samples_leaf": randint(1,20)}
+			model = RandomizedSearchCV(GradientBoostingClassifier(), 
+										param_distributions=hyparam_distr,
+										n_iter=50, n_jobs=10)
+			model.fit(X, y)
+			hyparam = model.best_params_
 
 	else:
-		hyparam_distr = {"n_estimators": range(20,201,20),
-							"max_depth": randint(1,21),
-							"min_samples_leaf": randint(1,11)}
-		model = RandomizedSearchCV(RandomForestClassifier(), 
-									param_distributions=hyparam_distr,
-									n_iter=50, n_jobs=10)
-		model.fit(X, y)
-		hyparam = model.best_params_
+		sys.exit("Wrong classifier")
 	return hyparam
 
 
