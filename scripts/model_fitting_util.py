@@ -211,8 +211,7 @@ def construct_model(X, y, classifier, opt_param=False):
 		model = GradientBoostingClassifier(n_estimators=hyparam["n_estimators"],
 											learning_rate=hyparam["learning_rate"],
 											subsample=hyparam["subsample"],
-											min_samples_leaf=hyparam["min_samples_leaf"],
-											class_weight="balanced")
+											min_samples_leaf=hyparam["min_samples_leaf"])
 	## other potential classifier
 	# model = KNeighborsClassifier() 
 	# model = NuSVC(nu=.5, kernel="rbf")
@@ -227,7 +226,8 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 	def rf_cv_score(n_estimators, max_depth, min_samples_leaf):
 		cv_model = RandomForestClassifier(n_estimators=int(n_estimators), 
 											max_depth=int(max_depth), 
-											min_samples_leaf=int(min_samples_leaf))
+											min_samples_leaf=int(min_samples_leaf),
+											class_weight="balanced")
 		cv_score = cross_val_score(cv_model, X, y, scoring="accuracy", 
 									cv=5, n_jobs=5).mean()
 		return cv_score
@@ -272,12 +272,12 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 							"min_samples_leaf": (1,20)}
 			model = BayesianOptimization(gb_cv_score, hyparam_distr, verbose=1)
 			model.explore({"n_estimators": np.linspace(20,200,5),
-							"learning_rate": 5*np.logspace(-4, -1, num=4, base=10),
+							"learning_rate": 5*np.logspace(-4, -1, num=5, base=10),
 							"subsample": np.linspace(0.5,1.0,5),
-							"min_samples_leaf": (1,20)})
+							"min_samples_leaf": np.linspace(1,20,5)})
 			model.maximize(init_points=10, n_iter=25, **gp_params)
 			hyparam = model.res["max"]["max_params"]
-			for k in hyparam.keys():
+			for k in ["n_estimators", "min_samples_leaf"]:
 				hyparam[k] = int(hyparam[k])
 		else:
 			hyparam_distr = {"n_estimators": range(20,201,20),

@@ -46,7 +46,7 @@ def main(argv):
 		## print label information
 		chance = calculate_chance(labels)
 		## model the holdout feature
-		classifier = "RandomForestClassifier"
+		classifier = "GradientBoostingClassifier"
 		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
 													cc_features, sample_name, classifier,
 													10, 100, True)
