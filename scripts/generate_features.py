@@ -118,7 +118,7 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 	return feature_mtx
 
 
-def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_dist=-5000):
+def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_dist=-1200):
 	## create peak dictionary
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
 	# peak_feature_names = ['Dist', 'RPH', 'TPH']

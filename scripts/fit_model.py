@@ -48,7 +48,7 @@ def main(argv):
 		## model the holdout feature
 		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 													labels, cc_features, sample_name, 
-													10, 20, False)
+													10, 100, True)
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.fig_filename, "accu")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 

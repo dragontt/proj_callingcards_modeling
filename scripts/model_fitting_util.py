@@ -6,12 +6,14 @@ import yaml
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
-from sklearn.model_selection import cross_val_score, StratifiedKFold, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
 from sklearn.svm import SVC, NuSVC, LinearSVC
 from sklearn.neighbors import KNeighborsClassifier
+
+from sklearn.model_selection import cross_val_score, StratifiedKFold, RandomizedSearchCV
+from bayes_opt import BayesianOptimization
 
 from sklearn.pipeline import make_pipeline
 from mlxtend.feature_selection import SequentialFeatureSelector as SFS
@@ -96,13 +98,14 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
 
 
-def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hyparam=False, verbose=True):
+def model_holdout_feature(X, y, features, sample_name, k=10, c=20, opt_param=False, verbose=True):
 	"""
 	Use K-1 folds of samples to train a model, then use the holdout samples 
 	to test the model. In testing, one feature will be varied within a range
 	of values, while other features will be hold as they are. Thus the testing 
 	accuracy is modeled as a function of the holdout feature.
 	"""
+
 	## define K folds for CV
 	k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
 	scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
@@ -111,37 +114,8 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 
 	## perform CV
 	for k, (train, test) in enumerate(k_fold.split(X, y)):
-		## define algo
-		if optimize_hyparam:
-			hyparam_distr = {"n_estimators": range(20,201,20),
-							"max_depth": randint(1,21),
-							"min_samples_leaf": randint(1,11)}
-			model = RandomizedSearchCV(RandomForestClassifier(), 
-										param_distributions=hyparam_distr,
-										n_iter=20,
-										n_jobs=10)
-			model.fit(X[train],y[train])
-			hyparam = model.best_params_
-			print hyparam
-		else:
-			hyparam = {"n_estimators": 20, 
-						"max_depth": None, 
-						"min_samples_leaf": 1}
-
-		## define model with desired hyperparameters
-		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
-										max_depth=hyparam["max_depth"],
-										min_samples_leaf=hyparam["min_samples_leaf"],
-										class_weight="balanced")
-		# model = KNeighborsClassifier() 
-		# model = NuSVC(nu=.5, kernel="rbf")
-		# model = LinearSVC()
-		# model = GradientBoostingClassifier(learning_rate=0.01, 
-		# 									n_estimators=100,
-		# 									subsample=.8)
-		# model = AdaBoostClassifier(n_estimators=100, 
-		# 							learning_rate=0.1)
-
+		## construct model 
+		model = construct_model(X[train], y[train], opt_param)
 		## train the model
 		model.fit(X[train], y[train]) 
 		## test without varying feature
@@ -195,6 +169,66 @@ def model_holdout_feature(X, y, features, sample_name, k=10, c=20, optimize_hypa
 			# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
 
 	return (scores_test, scores_holdout, features_var)
+
+
+def construct_model(X, y, opt_param=False):
+	if opt_param: 
+		## hyperparameter opitimization
+		use_BO = True
+		hyparam = optimize_model_hyparam(X, y, use_BO)
+		print hyparam
+	else:
+		hyparam = {"n_estimators": 20, 
+					"max_depth": None, 
+					"min_samples_leaf": 1}
+
+	## build model with desired hyperparameters
+	model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
+									max_depth=hyparam["max_depth"],
+									min_samples_leaf=hyparam["min_samples_leaf"],
+									class_weight="balanced")
+	# model = KNeighborsClassifier() 
+	# model = NuSVC(nu=.5, kernel="rbf")
+	# model = LinearSVC()
+	# model = GradientBoostingClassifier(learning_rate=0.01, 
+	# 									n_estimators=100,
+	# 									subsample=.8)
+	# model = AdaBoostClassifier(n_estimators=100, 
+	# 							learning_rate=0.1)
+	return
+
+
+def optimize_model_hyparam(X, y, use_BO):
+	## define inner functions
+	def rf_cv_score(n_estimators, max_depth, min_samples_leaf):
+		cv_model = RandomForestClassifier(n_estimators=int(n_estimators), 
+											max_depth=int(max_depth), 
+											min_samples_leaf=int(min_samples_leaf))
+		cv_score = cross_val_score(cv_model, X, y,
+									scoring="f1", cv=5, n_jobs=5).mean()
+		return cv_score
+
+	if use_BO:
+		gp_params = {"alpha": 1e-5}
+		hyparam_distr = {"n_estimators": (20,201),
+						"max_depth": (1,21),
+						"min_samples_leaf": (1,11)}
+		model = BayesianOptimization(rf_cv_score, hyparam_distr, verbose=1)
+		model.maximize(init_points=5, n_iter=25, **gp_params)
+		hyparam = model.res["max"]["max_params"]
+		for k in hyparam.keys():
+			hyparam[k] = int(hyparam[k])
+
+	else:
+		hyparam_distr = {"n_estimators": range(20,201,20),
+							"max_depth": randint(1,21),
+							"min_samples_leaf": randint(1,11)}
+		model = RandomizedSearchCV(RandomForestClassifier(), 
+									param_distributions=hyparam_distr,
+									n_iter=50, n_jobs=10)
+		model.fit(X, y)
+		hyparam = model.best_params_
+	return hyparam
 
 
 def plot_holdout_features(scores_test, scores_holdout, features_var, filename, metric="accu"):
