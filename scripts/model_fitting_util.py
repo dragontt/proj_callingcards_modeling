@@ -105,7 +105,7 @@ def model_holdout_feature(X, y, features, sample_name, classifier, k=10, c=20, o
 	of values, while other features will be hold as they are. Thus the testing 
 	accuracy is modeled as a function of the holdout feature.
 	"""
-
+	
 	## define K folds for CV
 	k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
 	scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
@@ -183,7 +183,7 @@ def construct_model(X, y, classifier, opt_param=False):
 	if classifier == "RandomForestClassifier":
 		if opt_param: 
 			## hyperparameter opitimization
-			use_BO = False
+			use_BO = True
 			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
 			print hyparam
 		else:
@@ -281,8 +281,8 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 				hyparam[k] = int(hyparam[k])
 		else:
 			hyparam_distr = {"n_estimators": range(20,201,20),
-							"learning_rate": uniform(0.001, 0.5),
-							"subsample": uniform(0.5, 1.0),
+							"learning_rate": uniform(loc=0.001, scale=0.499),
+							"subsample": uniform(loc=0.5, scale=0.5),
 							"min_samples_leaf": randint(1,20)}
 			model = RandomizedSearchCV(GradientBoostingClassifier(), 
 										param_distributions=hyparam_distr,
@@ -533,8 +533,8 @@ def process_data_collection(files_cc, optimized_labels, valid_sample_names, samp
 			print '... loading %s' % sn
 			cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sn])
 			data_collection[sn] = {'cc_data': cc_data, 
-											'labels': labels,
-											'orfs': orfs}
+									'labels': labels,
+									'orfs': orfs}
 	## combine samples
 	data_collection = combine_samples(data_collection, len(cc_features))
 	print '\n... working on %s\n' % sample_name

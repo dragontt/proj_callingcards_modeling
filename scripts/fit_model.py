@@ -19,6 +19,7 @@ python fit_model.py -m holdout_feature_variation -c ../output/ -o ../resources/o
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-m","--ranking_method", help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
+    parser.add_argument("-t","--data_type", default="highest_peaks", help="choose from ['highest_peaks, binned_promoter")
     parser.add_argument("-c","--cc_dir")
     parser.add_argument("-d","--de_dir")
     parser.add_argument("-o","--optimized_labels", default=None)
@@ -39,17 +40,17 @@ def main(argv):
 
 	if parsed.ranking_method == "holdout_feature_variation":
 		## parse input
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name)
 		## print label information
 		chance = calculate_chance(labels)
 		## model the holdout feature
-		classifier = "GradientBoostingClassifier"
+		classifier = "RandomForestClassifier"
 		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
 													cc_features, sample_name, classifier,
-													10, 100, True)
+													10, 100, False)
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.fig_filename, "accu")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
