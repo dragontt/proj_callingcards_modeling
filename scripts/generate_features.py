@@ -53,8 +53,11 @@ def load_orf_peaks(file):
 
 def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals, bkgd_totals):
 	## get number of bins
-	shift = bin_width #shift = bin_width/2
-	bins = (prom_range[1]-prom_range[0]) *2 / bin_width - 1
+	#shift = bin_width/2
+	# bins = (prom_range[1]-prom_range[0]) *2 / bin_width - 1
+	shift = bin_width 
+	bins = (prom_range[1]-prom_range[0]) / bin_width 
+
 	bin_dict = {}
 	feature_header = []
 	for k in range(bins):
