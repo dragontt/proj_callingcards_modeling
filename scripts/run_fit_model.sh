@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --mem-per-cpu=24G
 #SBATCH -n 1
-#SBATCH -o log/run_fit_model.out
-#SBATCH -e log/run_fit_model.err
+#SBATCH -o ../log/run_fit_model.out
+#SBATCH -e ../log/run_fit_model.err
 #SBATCH -J cc_modeling
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=yiming.kang@wustl.edu
