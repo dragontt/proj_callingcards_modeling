@@ -299,77 +299,78 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 	features = sorted(features_var.keys())
 	## define subplots
 	fig = plt.figure(num=None, figsize=(10, 7), dpi=300)
-	num_cols = 3
-	num_rows = len(features)/num_cols
+	num_cols = np.ceil(np.sqrt(len(features)))
+	num_rows = np.ceil(len(features)/num_cols)
+	num_cols = int(num_cols)
+	num_rows = int(num_rows)
 	for i in range(num_rows):
 		for j in range(num_cols):
 			k = num_cols*i+j ## feature index
+			if k < len(features):
+				if metric == "accu":
+					accu_ho = np.array(scores_holdout["accu"][features[k]])
+					num_var = accu_ho.shape[1]
+					## relative to testing acc
+					accu_ho = accu_ho - np.repeat(np.array(scores_test["accu"])[np.newaxis].T, 
+													num_var, axis=1) 
+					accu_ho_med = np.median(accu_ho, axis=0)
+					accu_ho_max = np.max(accu_ho, axis=0)
+					accu_ho_min = np.min(accu_ho, axis=0)
 
-			if metric == "accu":
-				accu_ho = np.array(scores_holdout["accu"][features[k]])
-				num_var = accu_ho.shape[1]
-				## relative to testing acc
-				accu_ho = accu_ho - np.repeat(np.array(scores_test["accu"])[np.newaxis].T, 
-												num_var, axis=1) 
-				accu_ho_med = np.median(accu_ho, axis=0)
-				accu_ho_max = np.max(accu_ho, axis=0)
-				accu_ho_min = np.min(accu_ho, axis=0)
+					## make plots
+					ax = fig.add_subplot(num_rows, num_cols, k+1)
+					ax.fill_between(features_var[features[k]], accu_ho_min, accu_ho_max, facecolor="blue", alpha=.25)
+					ax.plot(features_var[features[k]], accu_ho_med, 'k', linewidth=2)
+					ax.set_title('%s' % features[k])
+					ax.set_ylim(-.5, .5)
 
-				## make plots
-				ax = fig.add_subplot(num_rows, num_cols, k+1)
-				ax.fill_between(features_var[features[k]], accu_ho_min, accu_ho_max, facecolor="blue", alpha=.25)
-				ax.plot(features_var[features[k]], accu_ho_med, 'k', linewidth=2)
-				ax.set_title('%s' % features[k])
-				ax.set_ylim(-.5, .5)
+				elif metric == "sens_n_spec":
+					sens_ho = np.array(scores_holdout["sens"][features[k]])
+					spec_ho = np.array(scores_holdout["spec"][features[k]])
+					num_var = sens_ho.shape[1]
+					## relative to testing acc
+					sens_ho = sens_ho - np.repeat(np.array(scores_test["sens"])[np.newaxis].T, 
+													num_var, axis=1)
+					sens_ho_med = np.median(sens_ho, axis=0)
+					sens_ho_max = np.max(sens_ho, axis=0)
+					sens_ho_min = np.min(sens_ho, axis=0)
+					spec_ho = spec_ho - np.repeat(np.array(scores_test["spec"])[np.newaxis].T, 
+													num_var, axis=1) 
+					spec_ho_med = np.median(spec_ho, axis=0)
+					spec_ho_max = np.max(spec_ho, axis=0)
+					spec_ho_min = np.min(spec_ho, axis=0)
 
-			elif metric == "sens_n_spec":
-				sens_ho = np.array(scores_holdout["sens"][features[k]])
-				spec_ho = np.array(scores_holdout["spec"][features[k]])
-				num_var = sens_ho.shape[1]
-				## relative to testing acc
-				sens_ho = sens_ho - np.repeat(np.array(scores_test["sens"])[np.newaxis].T, 
-												num_var, axis=1)
-				sens_ho_med = np.median(sens_ho, axis=0)
-				sens_ho_max = np.max(sens_ho, axis=0)
-				sens_ho_min = np.min(sens_ho, axis=0)
-				spec_ho = spec_ho - np.repeat(np.array(scores_test["spec"])[np.newaxis].T, 
-												num_var, axis=1) 
-				spec_ho_med = np.median(spec_ho, axis=0)
-				spec_ho_max = np.max(spec_ho, axis=0)
-				spec_ho_min = np.min(spec_ho, axis=0)
+					## make plots
+					ax = fig.add_subplot(num_rows, num_cols, k+1)
+					ax.fill_between(features_var[features[k]], sens_ho_min, sens_ho_max, 
+									facecolor="#336666", alpha=.25)
+					ax.plot(features_var[features[k]], sens_ho_med, "#336666", linewidth=2)
+					ax.fill_between(features_var[features[k]], spec_ho_min, spec_ho_max, 
+									facecolor="#6d212d", alpha=.25)
+					ax.plot(features_var[features[k]], spec_ho_med, "#6d212d", linewidth=2)
+					ax.set_title('%s' % features[k])
+					ax.set_ylim(-.5, .5)
 
-				## make plots
-				ax = fig.add_subplot(num_rows, num_cols, k+1)
-				ax.fill_between(features_var[features[k]], sens_ho_min, sens_ho_max, 
-								facecolor="#336666", alpha=.25)
-				ax.plot(features_var[features[k]], sens_ho_med, "#336666", linewidth=2)
-				ax.fill_between(features_var[features[k]], spec_ho_min, spec_ho_max, 
-								facecolor="#6d212d", alpha=.25)
-				ax.plot(features_var[features[k]], spec_ho_med, "#6d212d", linewidth=2)
-				ax.set_title('%s' % features[k])
-				ax.set_ylim(-.5, .5)
+				elif metric == "prob_DE":
+					prDE_ho = np.array(scores_holdout["prDE"][features[k]])
+					num_var = prDE_ho.shape[1]
+					## relative to testing acc
+					prDE_ho_med = np.median(prDE_ho, axis=0)
+					prDE_ho_max = np.max(prDE_ho, axis=0)
+					prDE_ho_min = np.min(prDE_ho, axis=0)
+					prDE_ho_pctl = [np.percentile(prDE_ho, 2.5, axis=0), 
+									np.percentile(prDE_ho, 97.5, axis=0)]
 
-			elif metric == "prob_DE":
-				prDE_ho = np.array(scores_holdout["prDE"][features[k]])
-				num_var = prDE_ho.shape[1]
-				## relative to testing acc
-				prDE_ho_med = np.median(prDE_ho, axis=0)
-				prDE_ho_max = np.max(prDE_ho, axis=0)
-				prDE_ho_min = np.min(prDE_ho, axis=0)
-				prDE_ho_pctl = [np.percentile(prDE_ho, 2.5, axis=0), 
-								np.percentile(prDE_ho, 97.5, axis=0)]
+					## make plots
+					ax = fig.add_subplot(num_rows, num_cols, k+1)
+					# ax.fill_between(features_var[features[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
+					ax.fill_between(features_var[features[k]], prDE_ho_pctl[0], prDE_ho_pctl[1], facecolor="#0066cc", alpha=.25)
+					ax.plot(features_var[features[k]], prDE_ho_med, "#0066cc", linewidth=2)
+					ax.set_title('%s' % features[k])
+					ax.set_ylim(0, 1)
 
-				## make plots
-				ax = fig.add_subplot(num_rows, num_cols, k+1)
-				# ax.fill_between(features_var[features[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
-				ax.fill_between(features_var[features[k]], prDE_ho_pctl[0], prDE_ho_pctl[1], facecolor="#0066cc", alpha=.25)
-				ax.plot(features_var[features[k]], prDE_ho_med, "#0066cc", linewidth=2)
-				ax.set_title('%s' % features[k])
-				ax.set_ylim(0, 1)
-
-			else:
-				sys.exit("No such metric to plot")
-
+				else:
+					sys.exit("No such metric to plot")
 	plt.tight_layout()
 	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
 
@@ -525,7 +526,7 @@ def combine_samples(D, n_feat):
 	return D
 
 
-def process_data_collection(files_cc, optimized_labels, valid_sample_names, sample_name):
+def process_data_collection(files_cc, optimized_labels, valid_sample_names, sample_name, feature_prefix=None):
 	data_collection = {}
 	for file_cc in files_cc: ## remove wildtype samples
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
@@ -541,6 +542,11 @@ def process_data_collection(files_cc, optimized_labels, valid_sample_names, samp
 	labels = data_collection[sample_name]['labels']
 	cc_data = data_collection[sample_name]['cc_data']
 	orfs = data_collection[sample_name]['orfs']
+	## filter features by prefix
+	if feature_prefix:
+		indx = [i for i in range(len(cc_features)) if cc_features[i].startswith(feature_prefix)]
+		cc_features = cc_features[indx]
+		cc_data = cc_data[:,indx]
 	return (labels, cc_data, cc_features)
 
 

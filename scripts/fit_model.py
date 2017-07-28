@@ -42,8 +42,10 @@ def main(argv):
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
 		sample_name = 'combined-all'
+		feature_filtering_prefix = "tph" if parsed.data_type == "binned_promoter" else None
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name)
+												valid_sample_names, sample_name,
+												feature_filtering_prefix)
 		## print label information
 		chance = calculate_chance(labels)
 		## model the holdout feature
@@ -64,7 +66,7 @@ def main(argv):
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name)
+												valid_sample_names, sample_name, "tph")
 		## print label information
 		chance = calculate_chance(labels)
 		## rank features
