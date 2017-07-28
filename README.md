@@ -35,6 +35,5 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 5. Fit tree-based model and visualize data
 	
 	```
-	python fit_model.py -m tree_rank_highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt
-	dot -Tpng ../output/tree_combined-all.dot -o ../output/tree_combined-all.png
+    python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
 	```
