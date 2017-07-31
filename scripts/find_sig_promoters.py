@@ -113,7 +113,7 @@ def readin_promoters(filename):
 	prom_frame["chr"] = [prom_frame["chr"][i].strip('chr') for i in range(len(prom_frame))]
 	## fill the dataframe
 	IGR_frame["Systematic Name"] = prom_frame["name"]
-	IGR_frame["Chromosome"] = prom_frame["chr"]
+	IGR_frame["Chr"] = prom_frame["chr"]
 	IGR_frame["Start"] = prom_frame["start"]
 	IGR_frame["Stop"] = prom_frame["stop"]
 	return IGR_frame
@@ -123,12 +123,13 @@ def readin_hops(IGR_frame,background_gnashy_filename,experiment_gnashy_filename)
 	## read in the 3-column background and experiment gnashy data
 	background_frame = pd.read_csv(background_gnashy_filename, delimiter="\t", header = None)
 	background_frame.columns = ['Chr','Pos','Reads']
-	background_frame['Chr'] = np.array(background_frame['Chr'], dtype=str)
 	bg_hops = len(background_frame)
 	experiment_frame = pd.read_csv(experiment_gnashy_filename, delimiter="\t", header = None)
 	experiment_frame.columns = ['Chr','Pos','Reads']
-	background_frame['Chr'] = np.array(background_frame['Chr'], dtype=str)
 	exp_hops = len(experiment_frame)
+	background_frame["Chr"] = background_frame["Chr"].astype(basestring)
+	experiment_frame["Chr"] = experiment_frame["Chr"].astype(basestring)
+
 	# multiplication_factor = float(exp_hops) / float(bg_hops)
 	# print "There were "+str(exp_hops)+" hops in the experiment and "+str(bg_hops)+" in the background file"
 	# print "The multiplication factor is "+str(multiplication_factor)
