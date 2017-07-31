@@ -9,6 +9,10 @@ Calling Cards RNA-seq data analysis pipeline
 		The output contains 3 columns: chromosome, location, reads
 4. find_sig_promoter (optional) 
 
+
+Reference files copied from /scratch/rmlab/ref/calling_card_ref/yeast/
+
+
 Note: 
 (06/20/2017) I wasn't able to run cc_filter_reads using Rob's Undetermined_S0_L001_R1_001.fastq and Undetermined_S0_L001_R2_001.fastq. And Rob said it's OK to use single-end reads data that he had processed. So I used the processed *.fasta files for map_reads step. 
 

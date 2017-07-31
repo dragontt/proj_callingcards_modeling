@@ -48,14 +48,16 @@ def convert_orf_to_bed(file_in, file_out):
 				l = re.split('-|,| from ',x[1].strip('2-micron '))
 				ch = l[0]
 				pos = np.array(l[1:], dtype=int)
-				atg = np.min(pos) if s == '+' else np.max(pos)
+				g_start = np.min(pos) if s == '+' else np.max(pos)
+				g_end = np.max(pos) if s == '+' else np.min(pos)
 			else: ## deal with other chromsomes
 				l = re.split('-|,| from ',x[1])
 				ch = CH_DICT[l[0]]
 				pos = np.array(l[1:], dtype=int)
-				atg = np.min(pos) if s == '+' else np.max(pos)
+				g_start = np.min(pos) if s == '+' else np.max(pos)
+				g_end = np.max(pos) if s == '+' else np.min(pos)
 			## update bed structure
-			bed_out.append([ch, atg, atg, g, '.', s])
+			bed_out.append([ch, g_start, g_end, g, '.', s])
 	## save bed file
 	np.savetxt(file_out, np.array(bed_out), fmt='%s', delimiter='\t')
 
@@ -63,6 +65,45 @@ def convert_orf_to_bed(file_in, file_out):
 	os.system('mv '+ file_out +' '+ file_out +'_tmp')
 	os.system('sort -k1,1 -k2,2n '+ file_out +'_tmp > '+ file_out)
 	os.system('rm '+ file_out +'_tmp')
+
+
+def convert_orf_to_promoter(file_orf, file_prom, promoter_range):
+	## get gene body
+	gene_body_dict = {}
+	orf = np.loadtxt(file_orf, dtype=str)
+	for i in range(orf.shape[0]):
+		ch = orf[i,0]
+		pos = sorted(np.array(orf[i,1:3], dtype=int))
+		try:
+			gene_body_dict[ch].append(pos)
+		except KeyError:
+			gene_body_dict[ch] = [pos]
+	## get promoter by substracting gene body
+	prom_tbl = []
+	for i in range(orf.shape[0]):
+		ch = orf[i,0]
+		name = orf[i,3]
+		strand = orf[i,5]
+		if strand == "+":
+			atg = int(orf[i,1])
+			p_start = max(0, atg + promoter_range[0])
+			p_end = atg + promoter_range[1]
+			## check if the promoter is in the gene body of neighbors
+			for pos in gene_body_dict[ch]:
+				if p_start > pos[0] and p_start < pos[1]:
+					p_start = pos[1]
+		else: 
+			atg = int(orf[i,2])
+			p_start = atg - promoter_range[0]
+			p_end = max(0, atg - promoter_range[1])
+			## check if the promoter is in the gene body of neighbors
+			for pos in gene_body_dict[ch]:
+				if p_start > pos[0] and p_start < pos[1]:
+					p_start = pos[0]
+		## store promoter data
+		if (strand == "+" and p_start <= atg) or (strand == "-" and p_start >= atg):
+			prom_tbl.append([ch, p_start, p_end, name, ".", strand])
+	np.savetxt(file_prom, np.array(prom_tbl), fmt="%s", delimiter="\t")
 
 
 def convert_gnashy_to_bed(file_in, file_out):
@@ -136,10 +177,14 @@ def main(argv):
 		promoter_range[0] = -1*promoter_range[0]
 
 	## convert orf fasta to bed format
-	print "Converting orf to bed"
 	file_orf_fasta = parsed.orf_fasta
-	file_orf_bed = parsed.output_dir +'/'+ os.path.basename(file_orf_fasta).strip("fasta")+"ATG.bed"
-	convert_orf_to_bed(file_orf_fasta, file_orf_bed)
+	file_orf_atg = parsed.output_dir +'/'+ os.path.basename(file_orf_fasta).strip("fasta")+"ATG.bed"
+	file_orf_prom = parsed.output_dir +'/'+ os.path.basename(file_orf_fasta).strip("fasta")+"promoter.bed"
+	print "Converting orf to ATG"
+	convert_orf_to_bed(file_orf_fasta, file_orf_atg)
+	print "Converting orf to promoter"
+	convert_orf_to_promoter(file_orf_atg, file_orf_prom, promoter_range)
+	sys.exit()
 
 	## convert gnashy files to bed format
 	print "Converting gnashy to bed"
@@ -157,11 +202,11 @@ def main(argv):
 	## map hops to each orf, and each hop is allowed to multiple orfs
 	print "Converting gnashy to bed"
 	files_experiment_bed = glob.glob(parsed.output_dir +"/*.bed")
-	files_experiment_bed.remove(file_orf_bed)
+	files_experiment_bed.remove(file_orf_atg)
 	for file_experiment_bed in files_experiment_bed:
 		print "... working on", os.path.basename(file_experiment_bed)
 		file_orf_hops = parsed.output_dir +'/'+ os.path.basename(file_experiment_bed).strip('bed') +'orf_hops'
-		map_hops_to_orf(file_orf_bed, file_experiment_bed, file_orf_hops, promoter_range)
+		map_hops_to_orf(file_orf_atg, file_experiment_bed, file_orf_hops, promoter_range)
 
 	## clean up
 	os.system("rm "+ parsed.output_dir +"/*.bed")
