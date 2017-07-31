@@ -83,17 +83,10 @@ def find_significant_IGRs(outputpath, experiment_gnashy_filename, background_gna
 	#remove His3 false positive
 	# IGR_frame = IGR_frame[IGR_frame['Right Common Name'] != "HIS3"]
 
-	print IGR_frame
-	sys.exit()
-
 	#output frame
 	IGR_frame = IGR_frame.sort_values(["Systematic Name"],ascending = [False])
-	if re.search(r'/',experiment_gnashy_filename):
-		m = re.search(r'/([\w\.]+)$',experiment_gnashy_filename)
-		base_experiment_gnashy_filename = m.group(1)
-	else:
-		base_experiment_gnashy_filename = experiment_gnashy_filename
-	output_filename = outputpath + base_experiment_gnashy_filename +'.sig_prom.txt'
+	experiment_gnashy_basename = os.path.basename(experiment_gnashy_filename).strip("gnashy")
+	output_filename = outputpath + experiment_gnashy_basename +'sig_prom.txt'
 	IGR_frame.to_csv(output_filename,sep = '\t',index = None)
 
 
@@ -102,7 +95,10 @@ def readin_promoters(filename):
 	IGR_frame = pd.DataFrame(columns = ["Systematic Name", "Common Name",
 										"Chr", "Start", "Stop", 
 										"Background Hops", 
-										"Experiment Hops", 
+										"Experiment Hops",
+										"Background TPH",
+										"Experiment TPH", 
+										"Experiment TPH BS", 
 										"Poisson pvalue", 
 										"Gene Body Background Hops", 
 										"Gene Body Experiment Hops", 
@@ -127,15 +123,14 @@ def readin_hops(IGR_frame,background_gnashy_filename,experiment_gnashy_filename)
 	experiment_frame = pd.read_csv(experiment_gnashy_filename, delimiter="\t", header = None)
 	experiment_frame.columns = ['Chr','Pos','Reads']
 	exp_hops = len(experiment_frame)
-	background_frame["Chr"] = background_frame["Chr"].astype(basestring)
-	experiment_frame["Chr"] = experiment_frame["Chr"].astype(basestring)
-
-	# multiplication_factor = float(exp_hops) / float(bg_hops)
-	# print "There were "+str(exp_hops)+" hops in the experiment and "+str(bg_hops)+" in the background file"
-	# print "The multiplication factor is "+str(multiplication_factor)
+	## force chromosome in gnashy files to be string
+	background_frame["Chr"] = background_frame["Chr"].astype("|S10")
+	experiment_frame["Chr"] = experiment_frame["Chr"].astype("|S10")
+	## iter through each row and fill the dataframe
 	for indexvar in IGR_frame.index:
-		IGR_frame.ix[indexvar,"Background Hops"] = len(background_frame[(background_frame["Chr"]==IGR_frame.ix[indexvar,"Chr"]) & (background_frame["Pos"] <= IGR_frame.ix[indexvar,"Stop"]) &(background_frame["Pos"] >= IGR_frame.ix[indexvar,"Start"])])
-		IGR_frame.ix[indexvar,"Experiment Hops"] = len(experiment_frame[(experiment_frame["Chr"]==IGR_frame.ix[indexvar,"Chr"]) & (experiment_frame["Pos"] <= IGR_frame.ix[indexvar,"Stop"]) &(experiment_frame["Pos"] >= IGR_frame.ix[indexvar,"Start"])])
+		pos = [IGR_frame.ix[indexvar,"Start"], IGR_frame.ix[indexvar,"Stop"]]
+		IGR_frame.ix[indexvar,"Background Hops"] = len(background_frame[(background_frame["Chr"]==IGR_frame.ix[indexvar,"Chr"]) & (background_frame["Pos"] <= max(pos)) &(background_frame["Pos"] >= min(pos))])
+		IGR_frame.ix[indexvar,"Experiment Hops"] = len(experiment_frame[(experiment_frame["Chr"]==IGR_frame.ix[indexvar,"Chr"]) & (experiment_frame["Pos"] <= max(pos)) &(experiment_frame["Pos"] >= min(pos))])
 		IGR_frame.ix[indexvar,"Background TPH"] = float(IGR_frame.ix[indexvar,"Background Hops"])/float(bg_hops) *100000
 		IGR_frame.ix[indexvar,"Experiment TPH"] = float(IGR_frame.ix[indexvar,"Experiment Hops"])/float(exp_hops) *100000
 		IGR_frame.ix[indexvar,"Experiment TPH BS"] = IGR_frame.ix[indexvar,"Experiment TPH"] - IGR_frame.ix[indexvar,"Background TPH"]
@@ -196,7 +191,6 @@ def main(argv):
 	for gnashyfile in glob.glob(parsed.gnashypath+"*.gnashy"):
 		print "... working on", gnashyfile
 		find_significant_IGRs(parsed.outputpath, gnashyfile, parsed.bgfile, parsed.fastafile, parsed.promfile)
-		sys.exit()
 
 
 if __name__ == '__main__': 

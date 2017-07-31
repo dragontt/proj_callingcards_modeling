@@ -11,7 +11,8 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 	module load scipy
 	module load scikit-learn
     module load matplotlib
-	```
+	module load biopython
+    ```
 
 2. Map transposition data to gene targets, whose promoters range from (-)1000bp upstream to (+)100bp downstream from the ATG. (Input: three-column gnashy files)
 
@@ -20,19 +21,24 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 	python compute_orf_hops.py -r ../resources/ -u -1000 -d 100 -o ../output/
 	```
 
-3. Call peaks, allowing the maximum within cluster distance to be 200
+3. Calculate Poisson statistics of the transpoisitions within the defined promoter region
+    ```
+    python find_sig_promoters.py -op ../output/ -gp ../resources/
+    ``` 
+
+4. Call peaks, allowing the maximum within cluster distance to be 200
 
 	```
 	python call_peaks.py ../output/ 200
 	``` 
 
-4. Create feature matrix for modeling peaks (for Approach (2))
+5. Create feature matrix for modeling peaks (for Approach (2))
 
 	```
 	python generate_features.py -m highest_peaks -i ../output/ -o ../output/
 	```
 
-5. Fit tree-based model and visualize data
+6. Fit tree-based model and visualize data
 	
 	```
     python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
