@@ -5,6 +5,7 @@ Yeast_Brent_Collab_Aug_2014/
 archive/
 output/*
 !output/.gitignore
+!output/orf_coding_all_R61-1-1_20080606.promoter.bed
 resources/*
 !resources/orf_coding_all_R61-1-1_20080606.fasta
 !resources/NOTF_Minus_Adh1_2015_17_combined.gnashy
