@@ -27,6 +27,7 @@ python find_sig_promoters
 Example Usage:
 module load biopython
 python find_sig_promoters.py -o ../output/ -g ../resources/
+suffix=.txt; for x in *.sig_prom.txt; do file=${x%$suffix}; echo $file; tail --lines=+2 ${file}.txt | awk -F '\t' '{print $1"\t"$1"\t"$3"\t"$4"\t"$5"\t"$8"\t"$9"\t"$11"\t"$8"\t"$9"\t"$11}' | sort -k 1,1 > ${file}.gnashy; done
 
 
 The output file contains the following fields:

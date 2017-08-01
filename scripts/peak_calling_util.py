@@ -87,7 +87,7 @@ def cluster_orf2hops(orf2hops_frame, bg_frame, expt_totals, bg_totals, distance_
 	MAX_ARRAY_SIZE = 5000  #maximum number of insertions to cluster
 	MIN_JUMP = 1000 #minimum number of insertions to cluster
 
-	cluster_frame = pd.DataFrame(columns = ["Orf","Start","End","Center","Exp_TPH","Exp_RPH","Bg_TPH","Bg_RPH","Exp_TPH_BS","Exp_RPH_BS","Strand","Dist_to_ATG"])
+	cluster_frame = pd.DataFrame(columns = ["Orf","Chr","Start","End","Center","Exp_TPH","Exp_RPH","Bg_TPH","Bg_RPH","Exp_TPH_BS","Exp_RPH_BS","Strand","Dist_to_ATG"])
 
 	## get totals hops and reads for experiment and background data
 	total_exp_hops = expt_totals['hops']
@@ -100,6 +100,7 @@ def cluster_orf2hops(orf2hops_frame, bg_frame, expt_totals, bg_totals, distance_
 
 	## perform clustering on each orf promoter
 	for orf in grouped.groups:
+		ch = list(grouped.get_group(orf)['Chr'])[0]
 		orf_counter += 1
 		if orf_counter % 1000 == 0:
 			print "Analyzing "+str(orf_counter)+"th orf"
@@ -178,7 +179,7 @@ def cluster_orf2hops(orf2hops_frame, bg_frame, expt_totals, bg_totals, distance_
 				## calcuate distance of peak center to ATG
 				dist_to_atg = center - orf_atg if orf_strand=='+' else orf_atg - center
 
-				cluster_frame = cluster_frame.append(pd.DataFrame({"Orf":[orf],
+				cluster_frame = cluster_frame.append(pd.DataFrame({"Orf":[orf],"Chr":[ch],
 							"Start":[start],"End":[end],"Center":[center],
 							"Exp_TPH":[exp_TPH],"Exp_RPH":[exp_RPH],
 							"Bg_TPH":[bg_TPH],"Bg_RPH":[bg_RPH],
@@ -187,7 +188,7 @@ def cluster_orf2hops(orf2hops_frame, bg_frame, expt_totals, bg_totals, distance_
 	
 	#sort cluster frame by orf then position
 	cluster_frame = cluster_frame.sort_values(["Orf","Start"])
-	cluster_frame = cluster_frame[["Orf","Start","End","Center","Exp_TPH","Exp_RPH","Bg_TPH","Bg_RPH","Exp_TPH_BS","Exp_RPH_BS","Strand","Dist_to_ATG"]]
+	cluster_frame = cluster_frame[["Orf","Chr","Start","End","Center","Exp_TPH","Exp_RPH","Bg_TPH","Bg_RPH","Exp_TPH_BS","Exp_RPH_BS","Strand","Dist_to_ATG"]]
 	
 	return cluster_frame
 

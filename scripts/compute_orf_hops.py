@@ -185,7 +185,6 @@ def main(argv):
 	convert_orf_to_bed(file_orf_fasta, file_orf_atg)
 	print "Converting orf to promoter"
 	convert_orf_to_promoter(file_orf_atg, file_orf_prom, promoter_range)
-	sys.exit()
 
 	## convert gnashy files to bed format
 	print "Converting gnashy to bed"
@@ -201,17 +200,17 @@ def main(argv):
 	count_total_hops_and_reads(parsed.resources_dir, file_totals)
 
 	## map hops to each orf, and each hop is allowed to multiple orfs
-	print "Converting gnashy to bed"
+	print "Matching hops to orf promoters"
 	files_experiment_bed = glob.glob(parsed.output_dir +"/*.bed")
 	files_experiment_bed.remove(file_orf_atg)
 	for file_experiment_bed in files_experiment_bed:
 		file_basename_experiment_bed = os.path.basename(file_experiment_bed)
-		if not file_basename.startswith('orf'):
+		if not file_basename_experiment_bed.startswith('orf'):
 			print "... working on", file_experiment_bed
 			file_orf_hops = parsed.output_dir +'/'+ file_basename_experiment_bed.strip('bed') +'orf_hops'
 			map_hops_to_orf(file_orf_atg, file_orf_prom, file_experiment_bed, file_orf_hops)
 			## clean up
-			os.system("rm "+ file_experiment_bed)
+			# os.system("rm "+ file_experiment_bed)
 
 
 if __name__ == "__main__":

@@ -11,7 +11,7 @@ import operator
 """
 Example usage:
 module load pandas 
-python generate_features.py -m binned_promoter -i ../output/ -o ../output/ -u -1000 -d 100  
+python generate_features.py -m binned_promoter -i ../output/ -o ../output/ -pu -1000 -pd 100  
 """
 
 def parse_args(argv):
@@ -19,8 +19,8 @@ def parse_args(argv):
     parser.add_argument("-i","--input_dir")
     parser.add_argument("-o","--output_dir")
     parser.add_argument("-m","--feature_model", help="Choose from ['binned_promoter','highest_peaks','linked_peaks','summarized_peaks']")
-    parser.add_argument("-u","--promoter_upstream", type=int)
-    parser.add_argument("-d","--promoter_downstream", type=int)
+    parser.add_argument("-pu","--promoter_upstream", type=int)
+    parser.add_argument("-pd","--promoter_downstream", type=int)
     parser.add_argument("-w","--bin_width", type=int, default=100)
     parser.add_argument("-t","--file_total_hops_reads", default="../output/total_hops_and_reads.tbl")
     parser.add_argument("-b","--file_background", default="../output/NOTF_Minus_Adh1_2015_17_combined.orf_hops")
@@ -47,7 +47,7 @@ def load_orf_hops(file):
 
 def load_orf_peaks(file):
 	## load as data frame
-	return pd.read_csv(file, delimiter="\t", usecols=[0,8,9,10,11], header=None, skiprows=1,
+	return pd.read_csv(file, delimiter="\t", usecols=[0,9,10,11,12], header=None, skiprows=1,
 						names=["Orf","TPH","RPH","Strand","Dist"])
 
 
@@ -281,7 +281,7 @@ def main(argv):
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
 		files_experiment.remove(parsed.file_background)
 		for file_in in files_experiment:
-			file_in_basename = os.path.splitext(os.path.basename(file_in))[0]
+			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
 			experiment_totals = totals_dict[file_in_basename]
 			experiment = load_orf_hops(file_in)
@@ -293,9 +293,9 @@ def main(argv):
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
-			file_in_basename = os.path.splitext(os.path.basename(file_in))[0]
+			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_matrix = generate_highest_peaks_features(peaks_dataframe, "RPH", 2)
@@ -304,9 +304,9 @@ def main(argv):
 
 	elif parsed.feature_model == "linked_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
-			file_in_basename = os.path.splitext(os.path.basename(file_in))[0]
+			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_dict = generate_linked_peaks_features(peaks_dataframe, "TPH")
@@ -315,8 +315,8 @@ def main(argv):
 
 	elif parsed.feature_model == "summarized_peaks":
 		# generate features by summarizing the attributes of peaks
-		for file_in in glob.glob(dir_data+'/*.orf_peaks'):
-			file_prefix = file_in.strip('orf_peaks')
+		for file_in in glob.glob(dir_data+'/*.orf_peaks.200bp'):
+			file_prefix = file_in.strip('orf_peaks.200bp')
 			file_out = file_prefix+'cc_feature_matrix.summarized_orf_peaks.txt'
 			print '... working on', file_prefix.strip('./')
 			## generate calling cards feature matrix from clustered peak data
