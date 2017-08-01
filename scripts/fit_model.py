@@ -52,7 +52,7 @@ def main(argv):
 		classifier = "RandomForestClassifier"
 		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
 													cc_features, sample_name, classifier,
-													10, 100, False)
+													10, 100, True)
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.fig_filename, "accu")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
@@ -63,7 +63,7 @@ def main(argv):
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
 		## parse input
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.highest_peaks.txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name, "tph")
@@ -129,16 +129,16 @@ def main(argv):
 
 	elif parsed.ranking_method in ['sequential_forward_selection', 'sequential_backward_selection']:
 		## run feature selection on each sample
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.binned_promoter.txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
 		for file_cc in files_cc: ## remove wildtype samples
 			sample_name = os.path.basename(file_cc).split(".")[0]
-			if (sample_name in valid_sample_names) and (sample_name.startswith('BY4741')):
+			if (sample_name not in valid_sample_names) or (sample_name.startswith('BY4741')):
 				files_cc.remove(file_cc)
 
 		data_collection = {}
 		for file_cc in files_cc:
 			sample_name = os.path.basename(file_cc).split(".")[0]
-			print '\n... working on %s\n' % sample_name
+			print '... working on %s' % sample_name
 
 			## parse calling cards and DE data
 			if not parsed.optimized_labels: ## parse DE when optimized set isn't available
@@ -174,7 +174,7 @@ def main(argv):
 
 		## combine samples
 		data_collection = combine_samples(data_collection, len(cc_features))
-		for sample in ['combined-plusLys', 'combined-minusLys', 'combined-all']:
+		for sample in ['combined-all']:
 			print '\n... working on %s\n' % sample
 			labels = data_collection[sample]['labels']
 			cc_data = data_collection[sample]['cc_data']
@@ -188,17 +188,22 @@ def main(argv):
 			print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
 
 			## rank features
-			indx_focus = range(0,cc_data.shape[1],2)
-			rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
-			indx_focus = [i+1 for i in indx_focus]
-			rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
+			if parsed.data_type == "binned_promoter":
+				indx_focus = range(0,cc_data.shape[1],2)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
+				indx_focus = [i+1 for i in indx_focus]
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
 
-			print "5-fold corss-validation"
-			indx_focus = range(0,cc_data.shape[1],2)
-			rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
-			indx_focus = [i+1 for i in indx_focus]
-			rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
+				print "5-fold corss-validation"
+				indx_focus = range(0,cc_data.shape[1],2)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
+				indx_focus = [i+1 for i in indx_focus]
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
 
+			else:
+				sequential_rank_features(cc_features, cc_data, labels, method=parsed.ranking_method, verbose=True)
+				print "10-fold cross-validation"
+				sequential_rank_features(cc_features, cc_data, labels, method=parsed.ranking_method, cv=10, verbose=True)
 
 	else:
 		sys.exit("Wrong ranking method!")

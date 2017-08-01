@@ -26,11 +26,16 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 
 
-def rank_binned_features(features, X, y, method, cv=0, verbose=False):
+def sequential_rank_features(features, X, y, method, cv=0, verbose=False):
 	## use feature selection algorithms to rank features
-	estimator = LogisticRegression(fit_intercept=False,class_weight='balanced')
+	# estimator = LogisticRegression(fit_intercept=False,
+	# 								class_weight='balanced')
+	estimator = RandomForestClassifier(n_estimators=20, 
+										max_depth=None,
+										min_samples_leaf=1,
+										class_weight="balanced")
 	flag_forward = (method == "sequential_forward_selection")
-	model = SFS(estimator=estimator, k_features=(1,10), forward=flag_forward, floating=True, scoring="accuracy", cv=cv)
+	model = SFS(estimator=estimator, k_features=(1,len(features)), forward=flag_forward, floating=True, scoring="accuracy", cv=cv)
 	pipe = make_pipeline(StandardScaler(), model)
 	pipe.fit(X, y)
 
@@ -43,11 +48,15 @@ def rank_binned_features(features, X, y, method, cv=0, verbose=False):
 	best_features = [features[i] for i in feature_idx]
 
 	## get regression coeffs using the best feature combo
-	estimator.fit(X[:,feature_idx], y)
-	best_features_coef = estimator.coef_[0]
-
+	# estimator.fit(X[:,feature_idx], y)
+	# best_features_coef = estimator.coef_[0]
 	## print best feature combo (sorted)
-	sys.stdout.write("best combination (ACC: %.3f): %s\n" % (model.k_score_, ", ".join(["".join([best_features[i]," (","%.3f" % best_features_coef[i],")"]) for i in range(len(best_features))])))
+	# sys.stdout.write("best combination (ACC: %.3f): %s\n" % (model.k_score_, ", ".join(["".join([best_features[i]," (","%.3f" % best_features_coef[i],")"]) for i in range(len(best_features))])))
+
+	##
+	estimator.fit(X, y)
+	print features, ":", estimator.feature_importances_
+	sys.stdout.write("best combination (ACC: %.3f): %s\n" % (model.k_score_, ", ".join(["".join([best_features[i]]) for i in range(len(best_features))])))
 	
 	## print output of each selection iteration
 	if verbose:
