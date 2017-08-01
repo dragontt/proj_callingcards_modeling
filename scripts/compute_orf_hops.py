@@ -8,7 +8,7 @@ import argparse
 
 """
 Example usage: 
-python compute_orf_hops.py -r ../resources/ -u -1000 -d 100 -o ../output/
+python compute_orf_hops.py -r ../resources/ -o ../output/ -pu -1000 -pd 100
 """
 
 
@@ -17,8 +17,8 @@ def parse_args(argv):
     parser.add_argument("-r","--resources_dir")
     parser.add_argument("-f","--orf_fasta", default="../resources/orf_coding_all_R61-1-1_20080606.fasta")
     parser.add_argument("-b","--background_gnashy", default="../resources/NOTF_Minus_Adh1_2015_17_combined.gnashy")
-    parser.add_argument("-u","--promoter_upstream", type=int)
-    parser.add_argument("-d","--promoter_downstream", type=int)
+    parser.add_argument("-pu","--promoter_upstream", type=int)
+    parser.add_argument("-pd","--promoter_downstream", type=int)
     parser.add_argument("-o","--output_dir")
     parsed = parser.parse_args(argv[1:])
     return parsed
@@ -82,18 +82,17 @@ def convert_orf_to_promoter(file_orf, file_prom, promoter_range):
 	prom_tbl = []
 	for i in range(orf.shape[0]):
 		ch = orf[i,0]
+		atg = int(orf[i,1])
 		name = orf[i,3]
 		strand = orf[i,5]
 		if strand == "+":
-			atg = int(orf[i,1])
 			p_start = max(0, atg + promoter_range[0])
 			p_end = atg + promoter_range[1]
 			## check if the promoter is in the gene body of neighbors
 			for pos in gene_body_dict[ch]:
 				if p_start > pos[0] and p_start < pos[1]:
 					p_start = pos[1]
-		else: 
-			atg = int(orf[i,2])
+		else:
 			p_start = atg - promoter_range[0]
 			p_end = max(0, atg - promoter_range[1])
 			## check if the promoter is in the gene body of neighbors
@@ -127,32 +126,34 @@ def convert_gnashy_to_bed(file_in, file_out):
 	os.system('rm '+ file_out +'_tmp')
 
 
-def map_hops_to_orf(file_orf, file_in, file_out, promoter_range=False):
+def map_hops_to_orf(file_orfs, file_prom, file_hops, file_out):
 	## load bed files
-	orfs = np.loadtxt(file_orf, dtype=str, delimiter='\t')
-	hops = np.loadtxt(file_in, dtype=str, delimiter='\t')
-	
-	M = []
+	orfs = np.loadtxt(file_orfs, dtype=str, delimiter='\t')
+	promoters = np.loadtxt(file_prom, dtype=str, delimiter='\t')
+	hops = np.loadtxt(file_hops, dtype=str, delimiter='\t')
+	## get ATG dict
+	atg_dict = {}
 	for i in range(len(orfs)):
+		atg_dict[orfs[i,3]] = int(orfs[i,1])
+	M = []
+	for i in range(len(promoters)):
 		## get info of each orf and find the matching chromosome in hops data
-		orf_ch, orf_pos, orf_strand = orfs[i, [0,1,5]]
+		orf_ch, prom_start, prom_stop, orf_name, score, orf_strand = promoters[i,:]
+		prom_pos = sorted([prom_start, prom_stop])
+		orf_atg = atg_dict[orf_name]
 		hops_subset = hops[hops[:,0]==orf_ch, :] 
-
 		## iterate thru hops
 		for j in range(len(hops_subset)):
-			hop_pos = hops_subset[j,1]
-			## calculate hop to pos distance: '-' for upstream, '+' for downstream
-			dist = int(hop_pos)-int(orf_pos) if orf_strand == '+' else int(orf_pos)-int(hop_pos)
+			hop_pos = int(hops_subset[j,1])
 			## check if hops within promoter range
-			if promoter_range and (dist < promoter_range[0] or dist > promoter_range[1]):
-				continue
-			## update
-			M.append(list(hops_subset[j,:]) + list(orfs[i,:]) + [dist])
-
+			if hop_pos >= prom_pos[0] and hop_pos <= prom_pos[1]:
+				## calculate hop to pos distance: '-' for upstream, '+' for downstream
+				dist = hop_pos-orf_atg if orf_strand == '+' else orf_atg-hop_pos
+				## update
+				M.append(list(hops_subset[j,:]) + list(orfs[i,:]) + [dist])
 	## save output 
 	M = np.array(M)
 	np.savetxt(file_out, M, fmt='%s', delimiter='\t')
-
 
 
 def count_total_hops_and_reads(res_dir, file_tbl):
@@ -206,7 +207,7 @@ def main(argv):
 	for file_experiment_bed in files_experiment_bed:
 		print "... working on", os.path.basename(file_experiment_bed)
 		file_orf_hops = parsed.output_dir +'/'+ os.path.basename(file_experiment_bed).strip('bed') +'orf_hops'
-		map_hops_to_orf(file_orf_atg, file_experiment_bed, file_orf_hops, promoter_range)
+		map_hops_to_orf(file_orf_atg, file_orf_prom, file_experiment_bed, file_orf_hops)
 
 	## clean up
 	os.system("rm "+ parsed.output_dir +"/*.bed")
