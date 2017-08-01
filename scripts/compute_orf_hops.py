@@ -131,16 +131,16 @@ def map_hops_to_orf(file_orfs, file_prom, file_hops, file_out):
 	orfs = np.loadtxt(file_orfs, dtype=str, delimiter='\t')
 	promoters = np.loadtxt(file_prom, dtype=str, delimiter='\t')
 	hops = np.loadtxt(file_hops, dtype=str, delimiter='\t')
-	## get ATG dict
-	atg_dict = {}
+	## get orfs dict
+	orfs_dict = {}
 	for i in range(len(orfs)):
-		atg_dict[orfs[i,3]] = int(orfs[i,1])
+		orfs_dict[orfs[i,3]] = orfs[i,:]
 	M = []
 	for i in range(len(promoters)):
 		## get info of each orf and find the matching chromosome in hops data
 		orf_ch, prom_start, prom_stop, orf_name, score, orf_strand = promoters[i,:]
-		prom_pos = sorted([prom_start, prom_stop])
-		orf_atg = atg_dict[orf_name]
+		prom_pos = sorted([int(prom_start), int(prom_stop)])
+		orf_atg = int(orfs_dict[orf_name][1])
 		hops_subset = hops[hops[:,0]==orf_ch, :] 
 		## iterate thru hops
 		for j in range(len(hops_subset)):
@@ -150,7 +150,7 @@ def map_hops_to_orf(file_orfs, file_prom, file_hops, file_out):
 				## calculate hop to pos distance: '-' for upstream, '+' for downstream
 				dist = hop_pos-orf_atg if orf_strand == '+' else orf_atg-hop_pos
 				## update
-				M.append(list(hops_subset[j,:]) + list(orfs[i,:]) + [dist])
+				M.append(list(hops_subset[j,:]) + list(orfs_dict[orf_name]) + [dist])
 	## save output 
 	M = np.array(M)
 	np.savetxt(file_out, M, fmt='%s', delimiter='\t')
@@ -205,12 +205,13 @@ def main(argv):
 	files_experiment_bed = glob.glob(parsed.output_dir +"/*.bed")
 	files_experiment_bed.remove(file_orf_atg)
 	for file_experiment_bed in files_experiment_bed:
-		print "... working on", os.path.basename(file_experiment_bed)
-		file_orf_hops = parsed.output_dir +'/'+ os.path.basename(file_experiment_bed).strip('bed') +'orf_hops'
-		map_hops_to_orf(file_orf_atg, file_orf_prom, file_experiment_bed, file_orf_hops)
-
-	## clean up
-	os.system("rm "+ parsed.output_dir +"/*.bed")
+		file_basename_experiment_bed = os.path.basename(file_experiment_bed)
+		if not file_basename.startswith('orf'):
+			print "... working on", file_experiment_bed
+			file_orf_hops = parsed.output_dir +'/'+ file_basename_experiment_bed.strip('bed') +'orf_hops'
+			map_hops_to_orf(file_orf_atg, file_orf_prom, file_experiment_bed, file_orf_hops)
+			## clean up
+			os.system("rm "+ file_experiment_bed)
 
 
 if __name__ == "__main__":

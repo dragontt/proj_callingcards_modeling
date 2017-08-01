@@ -13,14 +13,20 @@ USAGE
 
 python find_sig_promoters
 	required fields:
-	-b, --bfile  background filename and full path
-	-rp --refpath  path to reference files (notORF file and orf coding filename)
-	-g -gnashyfile gnashy filename 
-	-op --outpath  output path
+  -o OUTPUTPATH, --outputpath OUTPUTPATH
+                        output path
+  -g GNASHYPATH, --gnashypath GNASHYPATH
+                        gnashy file path
+  -b BGFILE, --bgfile BGFILE
+                        background hop distribution path and filename
+  -f FASTAFILE, --fastafile FASTAFILE
+                        orf fasta file
+  -p PROMFILE, --promfile PROMFILE
+                        promoter bed file
 
 Example Usage:
 module load biopython
-python find_sig_promoters.py -op ../output/ -gp ../resources/
+python find_sig_promoters.py -o ../output/ -g ../resources/
 
 
 The output file contains the following fields:
@@ -84,7 +90,7 @@ def find_significant_IGRs(outputpath, experiment_gnashy_filename, background_gna
 	# IGR_frame = IGR_frame[IGR_frame['Right Common Name'] != "HIS3"]
 
 	#output frame
-	IGR_frame = IGR_frame.sort_values(["Systematic Name"],ascending = [False])
+	IGR_frame = IGR_frame.sort_values(["Systematic Name"],ascending = [True])
 	experiment_gnashy_basename = os.path.basename(experiment_gnashy_filename).strip("gnashy")
 	output_filename = outputpath + experiment_gnashy_basename +'sig_prom.txt'
 	IGR_frame.to_csv(output_filename,sep = '\t',index = None)
@@ -117,10 +123,10 @@ def readin_promoters(filename):
 
 def readin_hops(IGR_frame,background_gnashy_filename,experiment_gnashy_filename):
 	## read in the 3-column background and experiment gnashy data
-	background_frame = pd.read_csv(background_gnashy_filename, delimiter="\t", header = None)
+	background_frame = pd.read_csv(background_gnashy_filename, delimiter="\t", header=None)
 	background_frame.columns = ['Chr','Pos','Reads']
 	bg_hops = len(background_frame)
-	experiment_frame = pd.read_csv(experiment_gnashy_filename, delimiter="\t", header = None)
+	experiment_frame = pd.read_csv(experiment_gnashy_filename, delimiter="\t", header=None)
 	experiment_frame.columns = ['Chr','Pos','Reads']
 	exp_hops = len(experiment_frame)
 	## force chromosome in gnashy files to be string

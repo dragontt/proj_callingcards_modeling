@@ -29,7 +29,7 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 4. Call peaks, allowing the maximum within cluster distance to be 200
 
 	```
-	python call_peaks.py ../output/ 200
+	python call_peaks.py -d ../output/ -c 200
 	``` 
 
 5. Create feature matrix for modeling peaks (for Approach (2))
