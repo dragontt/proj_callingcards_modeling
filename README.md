@@ -43,7 +43,7 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 3. Calculate Poisson statistics of the transpoisitions within the defined promoter region
     ```
-    python find_sig_promoters.py -op ../output/ -gp ../resources/
+    python find_sig_promoters.py -o ../output/ -g ../resources/
     ``` 
 
 4. Call peaks, allowing the maximum within cluster distance to be 200

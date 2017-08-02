@@ -73,6 +73,7 @@ def convert_orf_to_promoter(file_orf, file_prom, promoter_range):
 	orf = np.loadtxt(file_orf, dtype=str)
 	for i in range(orf.shape[0]):
 		ch = orf[i,0]
+		name = orf[i,3]
 		pos = sorted(np.array(orf[i,1:3], dtype=int))
 		try:
 			gene_body_dict[ch].append(pos)
@@ -90,14 +91,14 @@ def convert_orf_to_promoter(file_orf, file_prom, promoter_range):
 			p_end = atg + promoter_range[1]
 			## check if the promoter is in the gene body of neighbors
 			for pos in gene_body_dict[ch]:
-				if p_start > pos[0] and p_start < pos[1]:
+				if p_start < pos[1] and pos[1] < atg:
 					p_start = pos[1]
 		else:
 			p_start = atg - promoter_range[0]
 			p_end = max(0, atg - promoter_range[1])
 			## check if the promoter is in the gene body of neighbors
 			for pos in gene_body_dict[ch]:
-				if p_start > pos[0] and p_start < pos[1]:
+				if p_start > pos[0] and pos[0] > atg:
 					p_start = pos[0]
 		## store promoter data
 		if (strand == "+" and p_start <= atg) or (strand == "-" and p_start >= atg):
@@ -210,7 +211,7 @@ def main(argv):
 			file_orf_hops = parsed.output_dir +'/'+ file_basename_experiment_bed.strip('bed') +'orf_hops'
 			map_hops_to_orf(file_orf_atg, file_orf_prom, file_experiment_bed, file_orf_hops)
 			## clean up
-			# os.system("rm "+ file_experiment_bed)
+			os.system("rm "+ file_experiment_bed)
 
 
 if __name__ == "__main__":

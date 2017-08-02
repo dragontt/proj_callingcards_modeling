@@ -293,7 +293,7 @@ def main(argv):
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -304,7 +304,7 @@ def main(argv):
 
 	elif parsed.feature_model == "linked_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -315,8 +315,8 @@ def main(argv):
 
 	elif parsed.feature_model == "summarized_peaks":
 		# generate features by summarizing the attributes of peaks
-		for file_in in glob.glob(dir_data+'/*.orf_peaks.200bp'):
-			file_prefix = file_in.strip('orf_peaks.200bp')
+		for file_in in glob.glob(dir_data+'/*.orf_peaks.100bp'):
+			file_prefix = file_in.strip('orf_peaks.100bp')
 			file_out = file_prefix+'cc_feature_matrix.summarized_orf_peaks.txt'
 			print '... working on', file_prefix.strip('./')
 			## generate calling cards feature matrix from clustered peak data
