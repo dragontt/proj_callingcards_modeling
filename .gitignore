@@ -3,6 +3,7 @@ Yeast_remapped_Jun_2017/output_and_analysis.v2/
 Yeast_remapped_Jun_2017/raw
 Yeast_Brent_Collab_Aug_2014/
 archive/
+script/*.pyc
 output/*
 !output/.gitignore
 !output/orf_coding_all_R61-1-1_20080606.promoter.bed
