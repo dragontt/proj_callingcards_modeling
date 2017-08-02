@@ -66,10 +66,10 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 ## Visualizing Peaks in IGV
 
-1. Convert bed to bedgraph
+1. Convert peak calling file to bedgraph format
 
     ```
-    awk '{printf "%s\t%d\t%d\t%2.3f\n" , $1,$2,$3,$5}' <peak_calling_file>.bed > <peak_calling_file>.bedgraph
+    tail --line=+2 <peak_file> | awk -F '\t' '{printf "%s\t%d\t%d\t%.3f\n" , $2,$3,$4,$10}' > <peak_file>.bedgraph
     ```
 
 2. Open IGV, load genome, or open the saved IGV session file (*.xml)
