@@ -18,7 +18,7 @@ def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-i","--input_dir")
     parser.add_argument("-o","--output_dir")
-    parser.add_argument("-m","--feature_model", help="Choose from ['binned_promoter','highest_peaks','linked_peaks','summarized_peaks']")
+    parser.add_argument("-m","--feature_model", help="Choose from ['binned_promoter','highest_peaks','num_peaks,'linked_peaks','summarized_peaks']")
     parser.add_argument("-pu","--promoter_upstream", type=int)
     parser.add_argument("-pd","--promoter_downstream", type=int)
     parser.add_argument("-w","--bin_width", type=int, default=100)
@@ -126,6 +126,7 @@ def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_di
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
 	# peak_feature_names = ['Dist', 'RPH', 'TPH']
 	peak_feature_names = sorted(feature_dict[feature_dict.keys()[0]]["1"].keys())
+	print peak_feature_names
 	feature_mtx = []
 	sorted_orfs = sorted(feature_dict.keys())
 	for orf in sorted_orfs:
@@ -147,6 +148,31 @@ def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_di
 	feature_mtx = np.vstack((np.array(header)[np.newaxis], feature_mtx))
 	return feature_mtx
 
+def generate_num_peaks_features(peaks_df, sort_by="TPH", max_dist=-1200):
+	## create peak dictionary
+	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
+	# peak_feature_names = ['Dist', 'RPH', 'TPH']
+	peak_feature_names = sorted(feature_dict[feature_dict.keys()[0]]["1"].keys())
+	feature_mtx = []
+	sorted_orfs = sorted(feature_dict.keys())
+	for orf in sorted_orfs:
+		sorted_peaks = feature_dict[orf]["Sorted_peaks"]
+		feature_row = []
+		## iteratively append peaks, sorted by height
+		if len(sorted_peaks)==0:
+			feature_row += [max_dist,0,0,0]
+		else:
+			peak_dict = feature_dict[orf][sorted_peaks[0]]
+			feature_row += [peak_dict[x] for x in peak_feature_names]
+			feature_row.append(int(len(sorted_peaks)))
+		feature_mtx.append(feature_row)
+	## add rownames and header
+	feature_mtx = np.hstack((np.array(sorted_orfs)[np.newaxis].T, np.array(feature_mtx)))
+	header = ['#orf']
+	header += ["".join(['p',str(1),'_',x]) for x in peak_feature_names]
+	header += ["num_peaks"]
+	feature_mtx = np.vstack((np.array(header)[np.newaxis], feature_mtx))
+	return feature_mtx
 
 def generate_linked_peaks_features(peaks_df, sort_by="TPH"):
 	feature_dict = {}
@@ -293,7 +319,7 @@ def main(argv):
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -302,9 +328,20 @@ def main(argv):
 			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.highest_peaks.txt"
 			write_feature_matrix(file_output, feature_matrix)
 
+	elif parsed.feature_model == "num_peaks":
+		## generate features in a linked list (json)
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
+		for file_in in files_experiment:
+			file_in_basename = os.path.basename(file_in).split(".")[0]
+			print "... working on", file_in_basename
+			peaks_dataframe = load_orf_peaks(file_in)
+			feature_matrix = generate_num_peaks_features(peaks_dataframe, "RPH")
+			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.num_peaks.txt"
+			write_feature_matrix(file_output, feature_matrix)
+
 	elif parsed.feature_model == "linked_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -315,8 +352,8 @@ def main(argv):
 
 	elif parsed.feature_model == "summarized_peaks":
 		# generate features by summarizing the attributes of peaks
-		for file_in in glob.glob(dir_data+'/*.orf_peaks.100bp'):
-			file_prefix = file_in.strip('orf_peaks.100bp')
+		for file_in in glob.glob(dir_data+'/*.orf_peaks.200bp'):
+			file_prefix = file_in.strip('orf_peaks.200bp')
 			file_out = file_prefix+'cc_feature_matrix.summarized_orf_peaks.txt'
 			print '... working on', file_prefix.strip('./')
 			## generate calling cards feature matrix from clustered peak data
