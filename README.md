@@ -4,21 +4,11 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 ### Package Requirement
 
-1. Install PyYAML
+Install PyYAML, Bayesian Optimization by fmfn (git), and mlxtend by rasbt (git)
     
     ```
     pip install --user pyyaml
-    ```
-
-2. Install Bayesian Optimization by fmfn (git)
-
-    ```
     pip install --user bayesian-optimization
-    ```
-
-3. Install mlxtend by rasbt (git)
-
-    ```
     pip install --user mlxtend  
     ```
 
@@ -66,7 +56,7 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 ## Visualizing Peaks in IGV
 
-1. Convert peak calling file to bedgraph format
+1. Prepare "data track" file for IGV: convert peak calling file to bedgraph format
 
     ```
     tail --line=+2 <peak_file> | awk -F '\t' '{printf "%s\t%d\t%d\t%.3f\n" , $2,$3,$4,$10}' > <peak_file>.bedgraph
