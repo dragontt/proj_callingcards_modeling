@@ -59,6 +59,8 @@ def main(argv):
 							parsed.fig_filename, "sens_n_spec")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.fig_filename, "prob_DE")
+		plot_holdout_features(scores_test, scores_holdout, features_var, 
+							parsed.fig_filename, "rel_prob_DE")
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
