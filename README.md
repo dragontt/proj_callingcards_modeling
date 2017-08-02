@@ -6,11 +6,11 @@ This project models the Calling Cards (CC) peaks as the predictors of differenti
 
 Install PyYAML, Bayesian Optimization by fmfn (git), and mlxtend by rasbt (git)
     
-    ```
-    pip install --user pyyaml
-    pip install --user bayesian-optimization
-    pip install --user mlxtend  
-    ```
+```
+pip install --user pyyaml
+pip install --user bayesian-optimization
+pip install --user mlxtend  
+```
 
 ### Example Usage
 
