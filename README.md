@@ -45,7 +45,7 @@ pip install --user mlxtend
 5. Create feature matrix for modeling peaks (for Approach (2))
 
 	```
-	python generate_features.py -m highest_peaks -i ../output/ -o ../output/
+	python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 	```
 
 6. Fit tree-based model and visualize data
@@ -59,7 +59,7 @@ pip install --user mlxtend
 1. Prepare "data track" file for IGV: convert peak calling file to bedgraph format
 
     ```
-    tail --line=+2 <peak_file> | awk -F '\t' '{printf "%s\t%d\t%d\t%.3f\n" , $2,$3,$4,$10}' > <peak_file>.bedgraph
+    tail --lines=+2 <peak_file> | awk -F '\t' '{printf "%s\t%d\t%d\t%.3f\n" , $2,$3,$4,$10}' > <peak_file>.bedgraph
     ```
 
 2. Open IGV, load genome, or open the saved IGV session file (*.xml)

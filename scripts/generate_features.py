@@ -11,7 +11,7 @@ import operator
 """
 Example usage:
 module load pandas 
-python generate_features.py -m binned_promoter -i ../output/ -o ../output/ -pu -1000 -pd 100  
+python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 """
 
 def parse_args(argv):
@@ -24,6 +24,7 @@ def parse_args(argv):
     parser.add_argument("-w","--bin_width", type=int, default=100)
     parser.add_argument("-t","--file_total_hops_reads", default="../output/total_hops_and_reads.tbl")
     parser.add_argument("-b","--file_background", default="../output/NOTF_Minus_Adh1_2015_17_combined.orf_hops")
+    parser.add_argument("-c","--dist_cutoff", default=200)
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -293,7 +294,7 @@ def main(argv):
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -304,7 +305,7 @@ def main(argv):
 
 	elif parsed.feature_model == "linked_peaks":
 		## generate features in a linked list (json)
-		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.100bp')
+		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
@@ -315,8 +316,8 @@ def main(argv):
 
 	elif parsed.feature_model == "summarized_peaks":
 		# generate features by summarizing the attributes of peaks
-		for file_in in glob.glob(dir_data+'/*.orf_peaks.100bp'):
-			file_prefix = file_in.strip('orf_peaks.100bp')
+		for file_in in glob.glob(dir_data+'/*.orf_peaks.'+ parsed.dist_cutoff +'bp'):
+			file_prefix = file_in.strip('orf_peaks.'+ parsed.dist_cutoff +'bp')
 			file_out = file_prefix+'cc_feature_matrix.summarized_orf_peaks.txt'
 			print '... working on', file_prefix.strip('./')
 			## generate calling cards feature matrix from clustered peak data
