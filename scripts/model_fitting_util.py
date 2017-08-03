@@ -388,9 +388,9 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 					prDE_ho_max_pos, prDE_ho_max_neg = [], []
 					prDE_ho_min_pos, prDE_ho_min_neg = [], []
 					prDE_ho_pctl_pos, prDE_ho_pctl_neg = [], []
-					for i in range(prDE_ho.shape[1]):
-						prDE_ho_pos = prDE_ho_sub[:,i][prDE_ho[:,i] > .5]
-						prDE_ho_neg = prDE_ho_sub[:,i][prDE_ho[:,i] < .5]
+					for l in range(prDE_ho.shape[1]):
+						prDE_ho_pos = prDE_ho_sub[:,l][prDE_ho[:,l] > .5]
+						prDE_ho_neg = prDE_ho_sub[:,l][prDE_ho[:,l] < .5]
 						prDE_ho_med_pos.append(np.median(prDE_ho_pos))
 						prDE_ho_med_neg.append(np.median(prDE_ho_neg))
 						prDE_ho_max_pos.append(np.max(prDE_ho_pos))
@@ -402,7 +402,6 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 						prDE_ho_pctl_neg = [np.percentile(prDE_ho_neg, 2.5, axis=0), 
 											np.percentile(prDE_ho_neg, 97.5, axis=0)]
 					## make plots
-					print k
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
 					ax.fill_between(features_var[features[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)
 					ax.fill_between(features_var[features[k]], prDE_ho_pctl_neg[0], prDE_ho_pctl_neg[1], facecolor="#FFA500", alpha=.25)
