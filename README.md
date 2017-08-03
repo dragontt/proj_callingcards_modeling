@@ -1,6 +1,11 @@
 # CallingCards Modeling
 
-This project models the Calling Cards (CC) peaks as the predictors of differentially expressed (DE) or not DE targets. There are two modeling approaches. (1) Binned promoter: assign CC features (e.g. TPH, RPH, distance to ATG) to the binned promoter, and use feature selection algorithms embeding logisitic regression to rank the features. (2) Tree based modeling: hierarchically cluster the transpositions into clusters (peaks), use the first few highest peaks for each gene target to build a decision tree or Random Forest, and rank the features by their importances output by the tree-based model. 
+This project models the Calling Cards (CC) peaks as the predictors of differentially expressed (DE) or not DE targets. There are two feature extraction approaches.
+
+1. Binned promoter: assign CC features (e.g. TPH, RPH, Log RPH) to the binned promoter
+2. Peak calling: hierarchically cluster the transpositions into peaks with pre-defined cutoff, and use the CC features of the first few highest peaks to  
+
+ (2) Tree based modeling: hierarchically cluster the transpositions into clusters (peaks), use the first few highest peaks for each gene target to build a decision tree or Random Forest, and rank the features by their importances output by the tree-based model. 
 
 ### Package Requirement
 
@@ -54,7 +59,7 @@ pip install --user mlxtend
     python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
 	```
 
-## Visualizing Peaks in IGV
+### Visualizing Peaks in IGV
 
 1. Prepare "data track" file for IGV: convert peak calling file to bedgraph format
 
