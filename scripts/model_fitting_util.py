@@ -398,9 +398,9 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 						prDE_ho_min_pos.append(np.min(prDE_ho_pos))
 						prDE_ho_min_neg.append(np.min(prDE_ho_neg))
 						prDE_ho_pctl_pos[0].append(np.percentile(prDE_ho_pos, 2.5))
-						prDE_ho_pctl_pos[0].append(np.percentile(prDE_ho_pos, 97.5))
+						prDE_ho_pctl_pos[1].append(np.percentile(prDE_ho_pos, 97.5))
 						prDE_ho_pctl_neg[0].append(np.percentile(prDE_ho_neg, 2.5))
-						prDE_ho_pctl_neg[0].append(np.percentile(prDE_ho_neg, 97.5))
+						prDE_ho_pctl_neg[1].append(np.percentile(prDE_ho_neg, 97.5))
 					## make plots
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
 					ax.fill_between(features_var[features[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)

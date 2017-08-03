@@ -57,7 +57,7 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 	#shift = bin_width/2
 	# bins = (prom_range[1]-prom_range[0]) *2 / bin_width - 1
 	shift = bin_width 
-	bins = (prom_range[1]-prom_range[0]) / bin_width 
+	bins = int(np.ceil((prom_range[1]-prom_range[0]) / float(bin_width))) 
 
 	bin_dict = {}
 	feature_header = []
@@ -68,7 +68,7 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 		feature_header.append('_'.join(['tph', str(bin_left), str(bin_right)]))
 		feature_header.append('_'.join(['rph', str(bin_left), str(bin_right)]))
 		feature_header.append('_'.join(['logrph', str(bin_left), str(bin_right)]))
-	feature_header += ['total_tph', 'total_rph', 'total_logrph']
+	feature_header += ['tph_total', 'rph_total', 'logrph_total']
 
 	## initialize feature matrix
 	orfs = np.unique(expt["Orf"])

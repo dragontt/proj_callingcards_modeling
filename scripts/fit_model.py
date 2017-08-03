@@ -13,18 +13,19 @@ module load scipy
 module load scikit-learn
 module load matplotlib
 
-python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
+python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -l ../resources/optimized_cc_subset.txt -o ../output/feature_holdout_analysis.6_mimic_cc
 """
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-m","--ranking_method", 
-    					help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
+    					help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', '', 'sequential_forward_selection', 'sequential_backward_selection', 'tree_rank_linked_peaks']")
     parser.add_argument("-t","--feature_type", 
     					help="choose from ['highest_peaks', 'binned_promoter']")
     parser.add_argument("-c","--cc_dir")
-    parser.add_argument("-o","--optimized_labels", default=None)
-    parser.add_argument("-f","--fig_filename")
+    parser.add_argument("-l","--optimized_labels")
+    parser.add_argument("-d","--de_dir")
+    parser.add_argument("-o","--output_fig_filename")
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -35,6 +36,11 @@ def main(argv):
 	if parsed.optimized_labels: ## parse optimized set if available 
 		optimized_labels = parse_optimized_labels(parsed.optimized_labels)
 		valid_sample_names = optimized_labels.keys()
+	elif parsed.de_dir: ## parse valid DE samples if available
+		de_sample_filenames = glob.glob(parsed.de_dir +"/*.DE.tsv")
+		valid_sample_names = [os.path.basename(f).split('.')[0] for f in de_sample_filenames]
+	else:
+		sys.exit("At least give one label directory: optimized subset file or DE folder!") 
 
 
 	if parsed.ranking_method == "holdout_feature_variation":
@@ -53,13 +59,13 @@ def main(argv):
 													cc_features, sample_name, classifier,
 													10, 100, False)
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.fig_filename, "accu")
+							parsed.output_fig_filename, "accu")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.fig_filename, "sens_n_spec")
+							parsed.output_fig_filename, "sens_n_spec")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.fig_filename, "prob_DE")
+							parsed.output_fig_filename, "prob_DE")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.fig_filename, "rel_prob_DE")
+							parsed.output_fig_filename, "rel_prob_DE")
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
