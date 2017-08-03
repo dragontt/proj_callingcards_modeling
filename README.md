@@ -1,11 +1,19 @@
 # CallingCards Modeling
 
-This project models the Calling Cards (CC) peaks as the predictors of differentially expressed (DE) or not DE targets. There are two feature extraction approaches.
+This project models the Calling Cards (CC) peaks as the predictors of differentially expressed (DE) or not DE targets. We extract CC features in two approaches.
 
-1. Binned promoter: assign CC features (e.g. TPH, RPH, Log RPH) to the binned promoter
-2. Peak calling: hierarchically cluster the transpositions into peaks with pre-defined cutoff, and use the CC features of the first few highest peaks to  
+1. Binned promoter: assign CC features (e.g. TPH, RPH, Log RPH, all subtracted by the no TF background) to bins in promoter, and build a feature matrix
+2. Peak calling: hierarchically cluster the transpositions into peaks with pre-defined cutoff, and build feature matrix using the CC features of the first few highest peaks  
 
- (2) Tree based modeling: hierarchically cluster the transpositions into clusters (peaks), use the first few highest peaks for each gene target to build a decision tree or Random Forest, and rank the features by their importances output by the tree-based model. 
+There are three approaches to generate the labels of target genes.
+
+1. Use iterative dual thresholding to find the optimal subset of targets that are bound and DE (i.e. positive label)
+2. Use unoptimized (naive) p-value threshold to find the targets that are bound and DE
+3. Use only p-value threshold on DE analysis to find the DE targets
+
+We rank the CC features by sequantial feature selection to understand their importances. Then we train models by employing machine learning algorithms (currrently implemented: Random Forest, and Gradient Boosting), and evaluate the change in predicting whether a target would be DE or not, by setting a holdout feature in testing set to a specific value. 
+
+![pipeline](pipeline.png)
 
 ### Package Requirement
 
@@ -41,19 +49,19 @@ pip install --user mlxtend
     python find_sig_promoters.py -o ../output/ -g ../resources/
     ``` 
 
-4. Call peaks, allowing the maximum within cluster distance to be 200
+4.1 Call peaks, allowing the maximum within cluster distance to be 200
 
 	```
 	python call_peaks.py -d ../output/ -c 200
 	``` 
 
-5. Create feature matrix for modeling peaks (for Approach (2))
+4.2 Create feature matrix for modeling peaks (for Approach (2))
 
 	```
 	python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 	```
 
-6. Fit tree-based model and visualize data
+5. Fit tree-based model and visualize data
 	
 	```
     python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
