@@ -18,13 +18,12 @@ python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ 
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("-m","--ranking_method", help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
-    parser.add_argument("-t","--data_type", default="highest_peaks", help="choose from ['highest_peaks, binned_promoter")
+    parser.add_argument("-m","--ranking_method", 
+    					help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', 'tree_rank_linked_peaks', 'sequential_forward_selection', 'sequential_backward_selection']")
+    parser.add_argument("-t","--feature_type", 
+    					help="choose from ['highest_peaks', 'binned_promoter']")
     parser.add_argument("-c","--cc_dir")
-    parser.add_argument("-d","--de_dir")
     parser.add_argument("-o","--optimized_labels", default=None)
-    parser.add_argument("-l","--threshold_log2FC", type=float)
-    parser.add_argument("-p","--threshold_adjustedP", type=float)
     parser.add_argument("-f","--fig_filename")
     parsed = parser.parse_args(argv[1:])
     return parsed
@@ -40,9 +39,9 @@ def main(argv):
 
 	if parsed.ranking_method == "holdout_feature_variation":
 		## parse input
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		sample_name = 'combined-all'
-		feature_filtering_prefix = "tph" if parsed.data_type == "binned_promoter" else None
+		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name,
 												feature_filtering_prefix)
@@ -65,7 +64,7 @@ def main(argv):
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
 		## parse input
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, sample_name, "tph")
@@ -131,7 +130,7 @@ def main(argv):
 
 	elif parsed.ranking_method in ['sequential_forward_selection', 'sequential_backward_selection']:
 		## run feature selection on each sample
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.data_type +".txt")
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		for file_cc in files_cc: ## remove wildtype samples
 			sample_name = os.path.basename(file_cc).split(".")[0]
 			if (sample_name not in valid_sample_names) or (sample_name.startswith('BY4741')):
@@ -143,31 +142,7 @@ def main(argv):
 			print '... working on %s' % sample_name
 
 			## parse calling cards and DE data
-			if not parsed.optimized_labels: ## parse DE when optimized set isn't available
-				file_de = parsed.de_dir +'/'+ sample_name +'.cuffdiff'
-				cc_data, labels, cc_features = prepare_datasets(file_cc, file_de, 
-									parsed.threshold_log2FC, parsed.threshold_adjustedP)
-			else:
-				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sample_name])
-
-			# ## print label information
-			# neg_labels = len(labels[labels==-1])
-			# pos_labels = len(labels[labels==1])
-			# total_labels = float(len(labels))
-			# chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
-			# print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
-
-			# ## rank features
-			# indx_focus = range(0,cc_data.shape[1],2)
-			# rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
-			# indx_focus = [i+1 for i in indx_focus]
-			# rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
-
-			# print "5-fold corss-validation"
-			# indx_focus = range(0,cc_data.shape[1],2)
-			# rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
-			# indx_focus = [i+1 for i in indx_focus]
-			# rank_binned_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
+			cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sample_name])
 
 			## store data
 			data_collection[sample_name] = {'cc_data': cc_data, 
@@ -190,7 +165,7 @@ def main(argv):
 			print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
 
 			## rank features
-			if parsed.data_type == "binned_promoter":
+			if parsed.feature_type == "binned_promoter":
 				indx_focus = range(0,cc_data.shape[1],2)
 				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
 				indx_focus = [i+1 for i in indx_focus]
