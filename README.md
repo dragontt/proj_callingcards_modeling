@@ -66,7 +66,8 @@ pip install --user mlxtend
 5. Fit tree-based model and visualize data
 	
 	```
-    python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
+    python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ \
+    -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc
 	```
 
 ### Visualizing Peaks in IGV
