@@ -49,17 +49,19 @@ pip install --user mlxtend
     python find_sig_promoters.py -o ../output/ -g ../resources/
     ``` 
 
-4.1 Call peaks, allowing the maximum within cluster distance to be 200
+4. Extract features
+    1. Create 6 bins in promoter, each of which have three feature value, and append three sum of individual feature values in the entire promoter
+
+    ```
+    python generate_features.py -m binned_promoter -i ../output/ -o ../output/ -pu -1000 -pd 100 -w 200
+    ```
+
+    2. Call peaks, allowing the maximum within cluster distance to be 200, and build feature matrix
 
 	```
 	python call_peaks.py -d ../output/ -c 200
+    python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 	``` 
-
-4.2 Create feature matrix for modeling peaks (for Approach (2))
-
-	```
-	python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
-	```
 
 5. Fit tree-based model and visualize data
 	
