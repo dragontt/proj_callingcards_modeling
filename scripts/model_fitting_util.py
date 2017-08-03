@@ -379,10 +379,10 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 					ax.set_ylim(0, 1)
 
 				elif metric == "rel_prob_DE":
+					## calculate relative prob of predicting DE
 					prDE_ho = np.array(scores_holdout["prDE"][features[k]])
 					num_var = prDE_ho.shape[1]
 					prDE_ho_sub = prDE_ho - np.repeat(np.array(scores_test["prDE"])[np.newaxis].T, num_var, axis=1)
-					#FFA500 - orange
 					## relative to testing acc 
 					prDE_ho_med_pos, prDE_ho_med_neg = [], []
 					prDE_ho_max_pos, prDE_ho_max_neg = [], []
@@ -401,15 +401,15 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 											np.percentile(prDE_ho_pos, 97.5, axis=0)]
 						prDE_ho_pctl_neg = [np.percentile(prDE_ho_neg, 2.5, axis=0), 
 											np.percentile(prDE_ho_neg, 97.5, axis=0)]
-						## make plots
-						ax = fig.add_subplot(num_rows, num_cols, k+1)
-						# ax.fill_between(features_var[features[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
-						ax.fill_between(features_var[features[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)
-						ax.fill_between(features_var[features[k]], prDE_ho_pctl_neg[0], prDE_ho_pctl_neg[1], facecolor="#FFA500", alpha=.25)
-						ax.plot(features_var[features[k]], prDE_ho_med_pos, "#0066cc", linewidth=2)
-						ax.plot(features_var[features[k]], prDE_ho_med_neg, "#FFA500", linewidth=2)
-						ax.set_title('%s' % features[k])
-						ax.set_ylim(-.5, .5)
+					## make plots
+					print k
+					ax = fig.add_subplot(num_rows, num_cols, k+1)
+					ax.fill_between(features_var[features[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)
+					ax.fill_between(features_var[features[k]], prDE_ho_pctl_neg[0], prDE_ho_pctl_neg[1], facecolor="#FFA500", alpha=.25)
+					ax.plot(features_var[features[k]], prDE_ho_med_pos, "#0066cc", linewidth=2)
+					ax.plot(features_var[features[k]], prDE_ho_med_neg, "#FFA500", linewidth=2)
+					ax.set_title('%s' % features[k])
+					ax.set_ylim(-.5, .5)
 
 				else:
 					sys.exit("No such metric to plot")

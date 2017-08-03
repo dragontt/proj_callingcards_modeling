@@ -21,7 +21,7 @@ def parse_args(argv):
     parser.add_argument("-m","--feature_model", help="Choose from ['binned_promoter','highest_peaks','num_peaks,'linked_peaks','summarized_peaks']")
     parser.add_argument("-pu","--promoter_upstream", type=int)
     parser.add_argument("-pd","--promoter_downstream", type=int)
-    parser.add_argument("-w","--bin_width", type=int, default=100)
+    parser.add_argument("-w","--bin_width", type=int, default=200)
     parser.add_argument("-t","--file_total_hops_reads", default="../output/total_hops_and_reads.tbl")
     parser.add_argument("-b","--file_background", default="../output/NOTF_Minus_Adh1_2015_17_combined.orf_hops")
     parser.add_argument("-c","--dist_cutoff", default=200)
@@ -63,14 +63,16 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 	feature_header = []
 	for k in range(bins):
 		bin_left = shift*k + prom_range[0]
-		bin_right = bin_left + bin_width
+		bin_right = min(bin_left + bin_width, prom_range[1])
 		bin_dict[k] = [bin_left, bin_right]
-		feature_header.append('tph_' + str(bin_left))
-		feature_header.append('rph_' + str(bin_left))
+		feature_header.append('_'.join(['tph', str(bin_left), str(bin_right)]))
+		feature_header.append('_'.join(['rph', str(bin_left), str(bin_right)]))
+		feature_header.append('_'.join(['logrph', str(bin_left), str(bin_right)]))
+	feature_header += ['total_tph', 'total_rph', 'total_logrph']
 
 	## initialize feature matrix
 	orfs = np.unique(expt["Orf"])
-	feature_mtx = np.zeros((len(orfs), bins*2))
+	feature_mtx = np.zeros((len(orfs), bins*3+3))
 
 	## iteratre thru orfs to parse out the hops and reads
 	orf_counter = 0
@@ -84,16 +86,12 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 			expt_dist = row["Dist"]
 
 			for k in bin_dict.keys():
-				if expt_dist >= bin_dict[k][0] and expt_dist < bin_dict[k][1]: 
-					feature_mtx[i, k*2] += 100000/expt_totals["hops"]
-					feature_mtx[i, k*2+1] += row["Reads"] * 100000/expt_totals["reads"]
-
-			# k = (expt_dist - prom_range[0] - bin_width + shift +.1)/float(shift)
-			# ks = np.array(np.unique([min(bins-1, np.ceil(k)), max(0, np.floor(k))]), dtype=int)
-			# ks = ks[ks < bins]
-			# for k in ks:
-			# 	feature_mtx[i, k*2] += 100000/expt_totals["hops"]
-			# 	feature_mtx[i, k*2+1] += row["Reads"] * 100000/expt_totals["reads"]
+				if expt_dist >= bin_dict[k][0] and expt_dist < bin_dict[k][1]:
+					curr_tph = 100000/expt_totals["hops"]
+					curr_rph = row["Reads"] * 100000/expt_totals["reads"]
+					feature_mtx[i, k*3] += curr_tph
+					feature_mtx[i, k*3+1] += curr_rph
+					feature_mtx[i, k*3+2] += np.log2(curr_rph)
 
 		## subtract normalized background hops and reads in bins
 		if orf in list(bkgd["Orf"]):
@@ -102,19 +100,17 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 
 				for k in bin_dict.keys():
 					if bkgd_dist >= bin_dict[k][0] and bkgd_dist < bin_dict[k][1]:
-						feature_mtx[i, k*2] -= 100000/bkgd_totals["hops"]
-						feature_mtx[i, k*2+1] -= row["Reads"] * 100000/bkgd_totals["reads"]
-						feature_mtx[i, k*2] = 0 if feature_mtx[i, k*2] < 0 else feature_mtx[i, k*2]
-						feature_mtx[i, k*2+1] = 0 if feature_mtx[i, k*2+1] < 0 else feature_mtx[i, k*2+1]
+						curr_tph = 100000/bkgd_totals["hops"]
+						curr_rph = row["Reads"] * 100000/bkgd_totals["reads"]
+						feature_mtx[i, k*3] -= curr_tph
+						feature_mtx[i, k*3+1] -= curr_rph
+						feature_mtx[i, k*3+2] -= np.log2(curr_rph)
+		## set negative entries to zero
+		feature_mtx[feature_mtx < 0] = 0
 
-				# k = (bkgd_dist - prom_range[0] - bin_width + shift +.1)/float(shift)
-				# ks = np.array(np.unique([min(bins-1, np.ceil(k)), max(0, np.floor(k))]), dtype=int)
-				# ks = ks[ks < bins]
-				# for k in ks:
-				# 	feature_mtx[i, k*2] -= 100000/bkgd_totals["hops"]
-				# 	feature_mtx[i, k*2+1] -= row["Reads"] * 100000/bkgd_totals["reads"]
-				# 	feature_mtx[i, k*2] = 0 if feature_mtx[i, k*2] < 0 else feature_mtx[i, k*2]
-				# 	feature_mtx[i, k*2+1] = 0 if feature_mtx[i, k*2+1] < 0 else feature_mtx[i, k*2+1]
+		## sum tph, rph, logrph (every 3 columns)
+		for i in range(3):
+			feature_mtx[:, bins*3+i] = np.sum(feature_mtx[:, np.arange(0,bins*3,3)+i], axis=1)
 
 	feature_mtx = np.hstack(( orfs[np.newaxis].T, feature_mtx ))
 	feature_mtx = np.vstack(( np.array(['#orf']+feature_header)[np.newaxis], feature_mtx ))
@@ -127,7 +123,6 @@ def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_di
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
 	# peak_feature_names = ['Dist', 'RPH', 'TPH']
 	peak_feature_names = sorted(feature_dict[feature_dict.keys()[0]]["1"].keys())
-	print peak_feature_names
 	feature_mtx = []
 	sorted_orfs = sorted(feature_dict.keys())
 	for orf in sorted_orfs:
