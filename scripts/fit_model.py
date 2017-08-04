@@ -13,13 +13,13 @@ module load scipy
 module load scikit-learn
 module load matplotlib
 
-python fit_model.py -m holdout_feature_variation -t highest_peaks -c ../output/ -l ../resources/optimized_cc_subset.txt -o ../output/feature_holdout_analysis.6_mimic_cc
+python fit_model.py -m holdout_feature_classification -t highest_peaks -c ../output/ -l ../resources/optimized_cc_subset.txt -o ../output/feature_holdout_analysis.6_mimic_cc
 """
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-m","--ranking_method", 
-    					help="choose from ['holdout_feature_variation', 'tree_rank_highest_peaks', '', 'sequential_forward_selection', 'sequential_backward_selection', 'tree_rank_linked_peaks']")
+    					help="choose from ['holdout_feature_classification', 'holdout_feature_regression', 'tree_rank_highest_peaks', 'sequential_forward_selection', 'sequential_backward_selection', 'tree_rank_linked_peaks']")
     parser.add_argument("-t","--feature_type", 
     					help="choose from ['highest_peaks', 'binned_promoter']")
     parser.add_argument("-c","--cc_dir")
@@ -36,27 +36,29 @@ def main(argv):
 	if parsed.optimized_labels: ## parse optimized set if available 
 		optimized_labels = parse_optimized_labels(parsed.optimized_labels)
 		valid_sample_names = optimized_labels.keys()
+		label_type = "binary"
 	elif parsed.de_dir: ## parse valid DE samples if available
-		de_sample_filenames = glob.glob(parsed.de_dir +"/*.DE.tsv")
-		valid_sample_names = [os.path.basename(f).split('.')[0] for f in de_sample_filenames]
+		files_de = glob.glob(parsed.de_dir +"/*.DE.tsv")
+		valid_sample_names = [os.path.basename(f).split('.')[0] for f in files_de]
+		label_type = "continuous"
 	else:
-		sys.exit("At least give one label directory: optimized subset file or DE folder!") 
+		sys.exit("Require the label directory: optimized subset file or DE folder!") 
 
 
-	if parsed.ranking_method == "holdout_feature_variation":
+	if parsed.ranking_method == "holdout_feature_classification":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		sample_name = 'combined-all'
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name,
+												valid_sample_names, sample_name, label_type,
 												feature_filtering_prefix)
 		## print label information
 		chance = calculate_chance(labels)
 		## model the holdout feature
 		classifier = "RandomForestClassifier"
 		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
-													cc_features, sample_name, classifier,
+													cc_features, sample_name, classifier, True,
 													10, 100, False)
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.output_fig_filename, "accu")
@@ -66,14 +68,33 @@ def main(argv):
 							parsed.output_fig_filename, "prob_DE")
 		plot_holdout_features(scores_test, scores_holdout, features_var, 
 							parsed.output_fig_filename, "rel_prob_DE")
+
+
+	elif parsed.ranking_method == "holdout_feature_regression":
+		## parse input 
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		sample_name = 'combined-all'
+		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
+		labels, cc_data, cc_features = process_data_collection(files_cc, files_de, 
+												valid_sample_names, sample_name, label_type,
+												feature_filtering_prefix)
+		## print label information: dummy regressor?
+		## model the holdout feature
+		regressor = "RidgeRegressor"
+		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
+													cc_features, sample_name, regressor, False,
+													10, 100, False)
+
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		sample_name = 'combined-all'
+		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name, "tph")
+												valid_sample_names, sample_name, label_type,
+												feature_filtering_prefix)
 		## print label information
 		chance = calculate_chance(labels)
 		## rank features

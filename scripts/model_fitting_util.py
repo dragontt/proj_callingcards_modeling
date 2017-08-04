@@ -6,13 +6,11 @@ import yaml
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier
-from sklearn.svm import SVC, NuSVC, LinearSVC
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 
-from sklearn.model_selection import cross_val_score, StratifiedKFold, RandomizedSearchCV
+from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
 from bayes_opt import BayesianOptimization
 
 from sklearn.pipeline import make_pipeline
@@ -107,83 +105,104 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
 
 
-def model_holdout_feature(X, y, features, sample_name, classifier, k=10, c=20, opt_param=False, verbose=True):
+def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=10, c=20, opt_param=False, verbose=True):
 	"""
 	Use K-1 folds of samples to train a model, then use the holdout samples 
 	to test the model. In testing, one feature will be varied within a range
 	of values, while other features will be hold as they are. Thus the testing 
 	accuracy is modeled as a function of the holdout feature.
 	"""
+	if is_classif:
+		## define K folds for CV
+		k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
+		scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
+		scores_holdout = {"accu":{}, "sens":{}, "spec":{}, "prDE":{}}
+		features_var = {}
+
+		## perform CV
+		for k, (train, test) in enumerate(k_fold.split(X, y)):
+			## construct model 
+			model = construct_classification_model(X[train], y[train], algorithm, opt_param)
+			## train the model
+			model.fit(X[train], y[train]) 
+			## test without varying feature
+			accu_te = model.score(X[test], y[test])
+			sens_te, spec_te = cal_sens_n_spec(y[test], model.predict(X[test])) 
+			scores_test["accu"].append(accu_te)
+			scores_test["sens"].append(sens_te)
+			scores_test["spec"].append(spec_te)
+			scores_test["prDE"] += list(model.predict_proba(X[test])[:,1])
+			if verbose:
+				print "... cv fold %d" % k 
+				print "   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te)
+				# pred_probs = model.predict_proba(X[test])
+				# pred_class = model.predict(X[test])
+				# for i in range(X[test].shape[0]):
+				# 	print "   ", y[test][i], pred_probs[i,:], pred_class[i]
+				# print "  ", np.unique(y[test], return_counts=True)
+
+			for i in range(len(features)): 
+				X_teho = X[test]
+				## vary the value of holdout feature
+				# f_max = max(X[:,i])
+				f_max = max(X[:,i]) if features[i].endswith("Dist") else np.percentile(X[:,i], 95)
+				f_min = min(X[:,i])
+				step = (f_max-f_min)/float(c) 
+				feature_values = np.arange(f_min, f_max+step, step)
+				# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(c)
+				# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
+				accu_ho = []
+				sens_ho = []
+				spec_ho = []
+				prDE_ho = np.empty((X_teho.shape[0],0))
+				for v in feature_values:
+					X_teho[:,i] = np.ones(X_teho.shape[0])*v
+					accu_ho.append(model.score(X_teho, y[test]))
+					sens_tmp, spec_tmp = cal_sens_n_spec(y[test], model.predict(X_teho))
+					prDE_tmp = model.predict_proba(X_teho)[:,1]
+					sens_ho.append(sens_tmp)
+					spec_ho.append(spec_tmp)
+					prDE_ho = np.hstack((prDE_ho, prDE_tmp[np.newaxis].T))
+				## store accuracy metrics 
+				try:	
+					scores_holdout["accu"][features[i]].append(accu_ho)
+					scores_holdout["sens"][features[i]].append(sens_ho)
+					scores_holdout["spec"][features[i]].append(spec_ho)
+					scores_holdout["prDE"][features[i]] = np.vstack((scores_holdout["prDE"][features[i]], prDE_ho))
+				except KeyError:
+					features_var[features[i]] = feature_values
+					scores_holdout["accu"][features[i]] = [accu_ho]
+					scores_holdout["sens"][features[i]] = [sens_ho]
+					scores_holdout["spec"][features[i]] = [spec_ho]
+					scores_holdout["prDE"][features[i]] = prDE_ho
+				# if verbose:
+				# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
 	
-	## define K folds for CV
-	k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
-	scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
-	scores_holdout = {"accu":{}, "sens":{}, "spec":{}, "prDE":{}}
-	features_var = {}
+	else:
+		## define K folds for CV
+		k_fold = KFold(k, shuffle=True, random_state=1)
+		scores_test = {"rsq":[], "lfc":[]}
+		scores_holdout = {"rsq":{}, "lfc":{}}
+		features_var = {}
 
-	## perform CV
-	for k, (train, test) in enumerate(k_fold.split(X, y)):
-		## construct model 
-		model = construct_model(X[train], y[train], classifier, opt_param)
-		## train the model
-		model.fit(X[train], y[train]) 
-		## test without varying feature
-		accu_te = model.score(X[test], y[test])
-		sens_te, spec_te = cal_sens_n_spec(y[test], model.predict(X[test])) 
-		scores_test["accu"].append(accu_te)
-		scores_test["sens"].append(sens_te)
-		scores_test["spec"].append(spec_te)
-		scores_test["prDE"] += list(model.predict_proba(X[test])[:,1])
-		if verbose:
-			print "... cv fold %d" % k 
-			print "   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te)
-			# pred_probs = model.predict_proba(X[test])
-			# pred_class = model.predict(X[test])
-			# for i in range(X[test].shape[0]):
-			# 	print "   ", y[test][i], pred_probs[i,:], pred_class[i]
-			# print "  ", np.unique(y[test], return_counts=True)
+		## perform CV
+		for k, (train, test) in enumerate(k_fold.split(X, y)):
+			## construct model 
+			model = construct_regression_model(X[train], y[train], algorithm)
+			## train the model
+			model.fit(X[train], y[train]) 
+			## test without varying feature
+			scores_test["rsq"].append(model.score(X[test], y[test]))
+			scores_test["lfc"] += list(model.predict(X[test])[:,1])
 
-		for i in range(len(features)): 
-			X_teho = X[test]
-			## vary the value of holdout feature
-			# f_max = max(X[:,i])
-			f_max = max(X[:,i]) if features[i].endswith("Dist") else np.percentile(X[:,i], 95)
-			f_min = min(X[:,i])
-			step = (f_max-f_min)/float(c) 
-			feature_values = np.arange(f_min, f_max+step, step)
-			# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(c)
-			# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
-			accu_ho = []
-			sens_ho = []
-			spec_ho = []
-			prDE_ho = np.empty((X_teho.shape[0],0))
-			for v in feature_values:
-				X_teho[:,i] = np.ones(X_teho.shape[0])*v
-				accu_ho.append(model.score(X_teho, y[test]))
-				sens_tmp, spec_tmp = cal_sens_n_spec(y[test], model.predict(X_teho))
-				prDE_tmp = model.predict_proba(X_teho)[:,1]
-				sens_ho.append(sens_tmp)
-				spec_ho.append(spec_tmp)
-				prDE_ho = np.hstack((prDE_ho, prDE_tmp[np.newaxis].T))
-			## store accuracy metrics 
-			try:	
-				scores_holdout["accu"][features[i]].append(accu_ho)
-				scores_holdout["sens"][features[i]].append(sens_ho)
-				scores_holdout["spec"][features[i]].append(spec_ho)
-				scores_holdout["prDE"][features[i]] = np.vstack((scores_holdout["prDE"][features[i]], prDE_ho))
-			except KeyError:
-				features_var[features[i]] = feature_values
-				scores_holdout["accu"][features[i]] = [accu_ho]
-				scores_holdout["sens"][features[i]] = [sens_ho]
-				scores_holdout["spec"][features[i]] = [spec_ho]
-				scores_holdout["prDE"][features[i]] = prDE_ho
-			# if verbose:
-			# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
+		print scores_test
+		sys.exit()
+		## TODO: add feature variation
 
 	return (scores_test, scores_holdout, features_var)
 
 
-def construct_model(X, y, classifier, opt_param=False):
+def construct_classification_model(X, y, classifier, opt_param=False):
 	"""
 	classifier - chose from ["RandomForestClassifier", 
 							"GradientBoostingClassifier"]
@@ -221,12 +240,27 @@ def construct_model(X, y, classifier, opt_param=False):
 											learning_rate=hyparam["learning_rate"],
 											subsample=hyparam["subsample"],
 											min_samples_leaf=hyparam["min_samples_leaf"])
+
+	else: 
+		sys.exit(classifier +" not implemented yet!")
+	
 	## other potential classifier
 	# model = KNeighborsClassifier() 
 	# model = NuSVC(nu=.5, kernel="rbf")
 	# model = LinearSVC()
 	# model = AdaBoostClassifier(n_estimators=100, 
 	# 							learning_rate=0.1)
+
+	return model
+
+
+def construct_regression_model(X, y, regressor):
+	if regressor == "RidgeRegressor":
+		model = Ridge()
+	
+	else:
+		sys.exit(regressor +" not implemented yet!")
+
 	return model
 
 
@@ -430,21 +464,6 @@ def cal_sens_n_spec(y, y_pred):
 	return (float(tp)/(tp+fn), float(tn)/(tn+fp))
 
 
-def prepare_datasets(file_cc, file_de, thld_lfc, thld_p):
-	## load DE and CC data
-	de = parse_de_matrix(file_de, thld_lfc, thld_p)
-	cc, features = parse_cc_matrix(file_cc)
-
-	## find common orfs (samples)
-	common_orfs = np.sort(np.intersect1d(cc[:,0], de[:,0]))
-	indx_cc = [np.where(cc[:,0] == orf)[0][0] for orf in common_orfs]
-	indx_de = [np.where(de[:,0] == orf)[0][0] for orf in common_orfs]
-	cc = np.array(cc[indx_cc, 1:], dtype=float)
-	labels = np.array(de[indx_de, 1], dtype=int)
-
-	return cc, labels, features
-
-
 def prepare_datasets_w_optimzed_labels(file_cc, opt_labels):
 	## parse labels of orfs
 	cc, features = parse_cc_matrix(file_cc)
@@ -464,6 +483,23 @@ def prepare_datasets_w_optimzed_labels(file_cc, opt_labels):
 	labels = np.array(labels[indx_labels, 1], dtype=int)
 
 	return cc, labels, features, common_orfs
+
+
+def prepare_datasets_w_de_labels(file_cc, file_label):
+	## parse labels of orfs
+	cc, features = parse_cc_matrix(file_cc)
+	orfs, lfcs = parse_de_matrix(file_label)
+	
+	## find common orfs (samples) for feature ranking
+	cc_out = []
+	for i in range(len(orfs)):
+		orf = orfs[i]
+		if orf in cc[:,0]:
+			indx = np.where(cc[:,0] == orf)[0][0]
+			cc_out.append(list(cc[indx,1:]))
+		else:
+			cc_out.append([0.]*len(features))
+	return cc_out, lfcs, features, orfs
 
 
 def prepare_subset_w_optimized_labels(cc_dict, opt_labels, sample_name, iteration=0, focused_orfs=None):
@@ -511,13 +547,15 @@ def prepare_subset_w_optimized_labels(cc_dict, opt_labels, sample_name, iteratio
 	return cc_data, labels, features, common_orfs
 
 
-def parse_de_matrix(file, thld_lfc, thld_p):
-	data = np.loadtxt(file, dtype=str, skiprows=1, delimiter='\t', usecols=[1,9,12])
-	de = []
-	for i in range(len(data)):
-		label = 1 if abs(float(data[i,1])) > thld_lfc and float(data[i,2]) < thld_p else -1
-		de.append([data[i,0], label])
-	return np.array(de)
+def parse_de_matrix(file, thld_lfc=0, thld_p=1):
+	data = np.loadtxt(file, dtype=str, delimiter='\t', usecols=[0,2])
+	orfs = data[:,0]
+	lfcs = np.array(data[:,1], dtype=float)
+	valid = [orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W")) for i in range(len(orfs))] ## with proper systematic name
+	orfs = orfs[valid]
+	lfcs = lfcs[valid]
+	indx = np.argsort(orfs)
+	return orfs[indx], lfcs[indx]
 
 
 def parse_cc_matrix(file):
@@ -567,13 +605,19 @@ def combine_samples(D, n_feat):
 	return D
 
 
-def process_data_collection(files_cc, optimized_labels, valid_sample_names, sample_name, feature_prefix=None):
+def process_data_collection(files_cc, file_labels, valid_sample_names, sample_name, label_type, feature_prefix=None):
 	data_collection = {}
 	for file_cc in files_cc: ## remove wildtype samples
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
 		if (sn in valid_sample_names) and (not sn.startswith('BY4741')):
 			print '... loading %s' % sn
-			cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sn])
+			if label_type == "binary":
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
+			elif label_type == "continuous":
+				file_label = np.array(file_labels)[[os.path.basename(l).split('.')[0] == sn for l in file_labels]][0] ## find the continuous label file that matches CC file 
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label)
+			else:
+				sys.exit("No label type given!")
 			data_collection[sn] = {'cc_data': cc_data, 
 									'labels': labels,
 									'orfs': orfs}
