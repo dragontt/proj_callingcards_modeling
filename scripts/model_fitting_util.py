@@ -340,6 +340,14 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 
 def plot_holdout_features(scores_test, scores_holdout, features_var, filename, metric="accu"):
 	features = sorted(features_var.keys())
+	if len(features_var)==7
+		features.insert(1,features[4])
+		features.pop(5)
+		features.insert(2,features[4])
+		features.pop(5)
+		features.insert(3,features[4])
+		features.pop(5)
+	
 	## define subplots
 	fig = plt.figure(num=None, figsize=(10, 7), dpi=300)
 	num_cols = np.ceil(np.sqrt(len(features)))
