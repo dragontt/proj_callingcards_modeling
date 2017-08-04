@@ -52,25 +52,25 @@ def main(argv):
 		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
 												valid_sample_names, label_type,)
 		## query samples
-		# sample_name = 'combined-all'
+		# for sample_name in ['combined-all']:
 		for sample_name in sorted(data_collection.keys()):
-			labels, cc_data = query_data_collection(data_collection, sample_name, 
-													cc_features, feature_filtering_prefix)
+			labels, cc_data, cc_features = query_data_collection(data_collection, sample_name, 
+												cc_features, feature_filtering_prefix)
 			## print label information
 			chance = calculate_chance(labels)
 			## model the holdout feature
 			classifier = "RandomForestClassifier"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
 														cc_features, sample_name, classifier, 
-														True, 10, 100, False)
-			plot_holdout_features(scores_test, scores_holdout, features_var, 
-								'_'.join(parsed.output_fig_filename, sample_name), "accu")
-			plot_holdout_features(scores_test, scores_holdout, features_var, 
-								'_'.join(parsed.output_fig_filename, sample_name), "sens_n_spec")
-			plot_holdout_features(scores_test, scores_holdout, features_var, 
-								'_'.join(parsed.output_fig_filename, sample_name), "prob_DE")
-			plot_holdout_features(scores_test, scores_holdout, features_var, 
-								'_'.join(parsed.output_fig_filename, sample_name), "rel_prob_DE")
+														True, 5, 100, False)
+			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
+								'_'.join([parsed.output_fig_filename, sample_name]), "accu")
+			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
+								'_'.join([parsed.output_fig_filename, sample_name]), "sens_n_spec")
+			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
+								'_'.join([parsed.output_fig_filename, sample_name]), "prob_DE")
+			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
+								'_'.join([parsed.output_fig_filename, sample_name]), "rel_prob_DE")
 
 
 	elif parsed.ranking_method == "holdout_feature_regression":
@@ -81,13 +81,13 @@ def main(argv):
 													valid_sample_names, label_type,)
 		## query samples
 		for sample_name in sorted(data_collection.keys()):
-			labels, cc_data = query_data_collection(data_collection, sample_name, 
+			labels, cc_data, cc_features= query_data_collection(data_collection, sample_name, 
 													cc_features, feature_filtering_prefix)
 			## print label information: dummy regressor? -> average lfc 
 			## model the holdout feature
-			# regressor = "KernelRidgeRegressor"
+			regressor = "KernelRidgeRegressor"
 			# regressor = "RandomForestRegressor"
-			regressor = "GradientBoostingRegressor"
+			# regressor = "GaussianProcessRegressor"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 															labels, cc_features, sample_name, 
 															regressor, False, 20, 100, False)
@@ -117,7 +117,7 @@ def main(argv):
 												valid_sample_names, label_type,)
 		## query samples
 		sample_name = 'combined-all'
-		labels, cc_data = query_data_collection(data_collection, sample_name, 
+		labels, cc_data, cc_features = query_data_collection(data_collection, sample_name, 
 												cc_features, feature_filtering_prefix)
 		## print label information
 		chance = calculate_chance(labels)
