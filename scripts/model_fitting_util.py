@@ -6,10 +6,11 @@ import yaml
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
-from sklearn.linear_model import LogisticRegression, Ridge
+from sklearn.linear_model import LogisticRegression, RidgeCV
+from sklearn.kernel_ridge import KernelRidge
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
-
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor
+from sklearn.metrics import explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
 from bayes_opt import BayesianOptimization
 
@@ -181,8 +182,8 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 	else:
 		## define K folds for CV
 		k_fold = KFold(k, shuffle=True, random_state=1)
-		scores_test = {"rsq":[], "lfc":[]}
-		scores_holdout = {"rsq":{}, "lfc":{}}
+		scores_test = {"rsq":[], "lfc":[], "var_exp":[]}
+		scores_holdout = {"rsq":{}, "lfc":{}, "var_exp":{}}
 		features_var = {}
 
 		## perform CV
@@ -190,13 +191,16 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 			## construct model 
 			model = construct_regression_model(X[train], y[train], algorithm)
 			## train the model
-			model.fit(X[train], y[train]) 
+			model.fit(X[train], y[train])
 			## test without varying feature
-			scores_test["rsq"].append(model.score(X[test], y[test]))
-			scores_test["lfc"] += list(model.predict(X[test])[:,1])
+			# rsq = model.score(X[test], y[test])
+			y_pred = model.predict(X[test])
+			rsq = r2_score(y[test], y_pred)
+			var_exp = explained_variance_score(y[test], y_pred)
+			scores_test["rsq"].append(rsq)
+			scores_test["var_exp"].append(var_exp)
+			scores_test["lfc"] += list(y_pred)
 
-		print scores_test
-		sys.exit()
 		## TODO: add feature variation
 
 	return (scores_test, scores_holdout, features_var)
@@ -256,8 +260,13 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 
 def construct_regression_model(X, y, regressor):
 	if regressor == "RidgeRegressor":
-		model = Ridge()
-	
+		model = RidgeCV()
+	elif regressor == "KernelRidgeRegressor":
+		model = KernelRidge(kernel="rbf")
+	elif regressor == "RandomForestRegressor":
+		model = RandomForestRegressor()
+	elif regressor == "GradientBoostingRegressor":
+		model = GradientBoostingRegressor()
 	else:
 		sys.exit(regressor +" not implemented yet!")
 
@@ -496,69 +505,33 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 		orf = orfs[i]
 		if orf in cc[:,0]:
 			indx = np.where(cc[:,0] == orf)[0][0]
-			cc_out.append(list(cc[indx,1:]))
+			cc_out.append(list(np.array(cc[indx,1:], dtype=float)))
 		else:
 			cc_out.append([0.]*len(features))
+	cc_out = np.array(cc_out, dtype=float)
+
 	return cc_out, lfcs, features, orfs
 
 
-def prepare_subset_w_optimized_labels(cc_dict, opt_labels, sample_name, iteration=0, focused_orfs=None):
-	## parse labels of orfs
-	labels = []
-	for orf in opt_labels['bound']:
-		if orf in opt_labels['intersection']:
-			labels.append([orf, '1'])
-		else:
-			labels.append([orf, '-1'])
-	labels = np.array(labels)
-
-	## choose which orfs to use
-	if iteration == 0:
-		cc_orfs = np.array(cc_dict.keys())
-	else:
-		cc_orfs = []
-		for sample, orf in focused_orfs:
-			if sample == sample_name:
-				cc_orfs.append(orf)
-		cc_orfs = np.intersect1d(cc_orfs, cc_dict.keys())
-
-	## get feature names and start appending cc data	
-	features = np.array(cc_dict[cc_dict.keys()[0]]["1"].keys())
-	cc_data = np.empty((0,len(features)))
-	if len(cc_orfs) > 0:
-		cc_orfs_w_valid_peaks = []
-		for orf in cc_orfs:
-			if iteration < len(cc_dict[orf]["Sorted_peaks"]): ## if have next highest peak
-				cc_orfs_w_valid_peaks.append(orf)
-				peak_indx = cc_dict[orf]["Sorted_peaks"][iteration]
-				tmp_data = cc_dict[orf][peak_indx]
-				tmp_data = np.array([tmp_data[x] for x in features])
-				cc_data = np.vstack(( cc_data, tmp_data[np.newaxis] ))
-		## find common orfs (samples) for building decision tree
-		common_orfs = np.sort(np.intersect1d(cc_orfs_w_valid_peaks, labels[:,0]))
-		indx_cc = [np.where(np.array(cc_orfs_w_valid_peaks) == orf)[0][0] for orf in common_orfs]
-		indx_labels = [np.where(labels[:,0] == orf)[0][0] for orf in common_orfs]
-		cc_data = np.array(cc_data[indx_cc, :], dtype=float)
-		labels = np.array(labels[indx_labels, 1], dtype=int)
-	else:
-		labels = np.empty(0)
-		common_orfs = np.empty(0)
-
-	return cc_data, labels, features, common_orfs
-
-
-def parse_de_matrix(file, thld_lfc=0, thld_p=1):
+def parse_de_matrix(file, label_bound=15):
+	## load data
 	data = np.loadtxt(file, dtype=str, delimiter='\t', usecols=[0,2])
 	orfs = data[:,0]
 	lfcs = np.array(data[:,1], dtype=float)
-	valid = [orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W")) for i in range(len(orfs))] ## with proper systematic name
+	## get proper systematic name
+	valid = [orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W")) for i in range(len(orfs))] 
 	orfs = orfs[valid]
 	lfcs = lfcs[valid]
+	## set upper and lower bound on logFC
+	lfcs[lfcs > label_bound] = label_bound
+	lfcs[lfcs < -1*label_bound] = -1*label_bound
+	## sort by systematic orf name
 	indx = np.argsort(orfs)
 	return orfs[indx], lfcs[indx]
 
 
 def parse_cc_matrix(file):
+	## load data
 	cc = np.loadtxt(file, dtype=str, delimiter='\t')
 	f = open(file, 'r')
 	features = np.array(f.readline().strip().split('\t')[1:])
@@ -605,7 +578,7 @@ def combine_samples(D, n_feat):
 	return D
 
 
-def process_data_collection(files_cc, file_labels, valid_sample_names, sample_name, label_type, feature_prefix=None):
+def process_data_collection(files_cc, file_labels, valid_sample_names, label_type):
 	data_collection = {}
 	for file_cc in files_cc: ## remove wildtype samples
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
@@ -623,16 +596,21 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, sample_na
 									'orfs': orfs}
 	## combine samples
 	data_collection = combine_samples(data_collection, len(cc_features))
-	print '\n... working on %s\n' % sample_name
-	labels = data_collection[sample_name]['labels']
-	cc_data = data_collection[sample_name]['cc_data']
-	orfs = data_collection[sample_name]['orfs']
+	return data_collection, cc_features
+
+
+def query_data_collection(data_collection, query_sample_name, cc_features, feature_prefix=None):
+	## make query
+	print '\n... working on %s\n' % query_sample_name
+	labels = data_collection[query_sample_name]['labels']
+	cc_data = data_collection[query_sample_name]['cc_data']
+	orfs = data_collection[query_sample_name]['orfs']
 	## filter features by prefix
 	if feature_prefix:
 		indx = [i for i in range(len(cc_features)) if cc_features[i].startswith(feature_prefix)]
 		cc_features = cc_features[indx]
 		cc_data = cc_data[:,indx]
-	return (labels, cc_data, cc_features)
+	return (labels, cc_data)
 
 
 def calculate_chance(labels, verbose=True):
@@ -682,4 +660,51 @@ def rank_features_SFS(features, X, y):
 	for k in sorted(model.subsets_):
 		v = model.subsets_[k]
 		sys.stdout.write("%d\tscore=%.3f\tfeatures=%s\n" % (k, v["avg_score"], ", ".join([features[i] for i in v["feature_idx"]]))) 
+
+
+def prepare_subset_w_optimized_labels(cc_dict, opt_labels, sample_name, iteration=0, focused_orfs=None):
+	"""DEPRECATED"""
+	## parse labels of orfs
+	labels = []
+	for orf in opt_labels['bound']:
+		if orf in opt_labels['intersection']:
+			labels.append([orf, '1'])
+		else:
+			labels.append([orf, '-1'])
+	labels = np.array(labels)
+
+	## choose which orfs to use
+	if iteration == 0:
+		cc_orfs = np.array(cc_dict.keys())
+	else:
+		cc_orfs = []
+		for sample, orf in focused_orfs:
+			if sample == sample_name:
+				cc_orfs.append(orf)
+		cc_orfs = np.intersect1d(cc_orfs, cc_dict.keys())
+
+	## get feature names and start appending cc data	
+	features = np.array(cc_dict[cc_dict.keys()[0]]["1"].keys())
+	cc_data = np.empty((0,len(features)))
+	if len(cc_orfs) > 0:
+		cc_orfs_w_valid_peaks = []
+		for orf in cc_orfs:
+			if iteration < len(cc_dict[orf]["Sorted_peaks"]): ## if have next highest peak
+				cc_orfs_w_valid_peaks.append(orf)
+				peak_indx = cc_dict[orf]["Sorted_peaks"][iteration]
+				tmp_data = cc_dict[orf][peak_indx]
+				tmp_data = np.array([tmp_data[x] for x in features])
+				cc_data = np.vstack(( cc_data, tmp_data[np.newaxis] ))
+		## find common orfs (samples) for building decision tree
+		common_orfs = np.sort(np.intersect1d(cc_orfs_w_valid_peaks, labels[:,0]))
+		indx_cc = [np.where(np.array(cc_orfs_w_valid_peaks) == orf)[0][0] for orf in common_orfs]
+		indx_labels = [np.where(labels[:,0] == orf)[0][0] for orf in common_orfs]
+		cc_data = np.array(cc_data[indx_cc, :], dtype=float)
+		labels = np.array(labels[indx_labels, 1], dtype=int)
+	else:
+		labels = np.empty(0)
+		common_orfs = np.empty(0)
+
+	return cc_data, labels, features, common_orfs
+
 
