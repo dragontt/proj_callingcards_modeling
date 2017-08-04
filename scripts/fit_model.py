@@ -48,53 +48,77 @@ def main(argv):
 	if parsed.ranking_method == "holdout_feature_classification":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		sample_name = 'combined-all'
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
-		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name, label_type,
-												feature_filtering_prefix)
-		## print label information
-		chance = calculate_chance(labels)
-		## model the holdout feature
-		classifier = "RandomForestClassifier"
-		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
-													cc_features, sample_name, classifier, True,
-													10, 100, False)
-		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.output_fig_filename, "accu")
-		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.output_fig_filename, "sens_n_spec")
-		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.output_fig_filename, "prob_DE")
-		plot_holdout_features(scores_test, scores_holdout, features_var, 
-							parsed.output_fig_filename, "rel_prob_DE")
+		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
+												valid_sample_names, label_type,)
+		## query samples
+		# sample_name = 'combined-all'
+		for sample_name in sorted(data_collection.keys()):
+			labels, cc_data = query_data_collection(data_collection, sample_name, 
+													cc_features, feature_filtering_prefix)
+			## print label information
+			chance = calculate_chance(labels)
+			## model the holdout feature
+			classifier = "RandomForestClassifier"
+			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
+														cc_features, sample_name, classifier, 
+														True, 10, 100, False)
+			plot_holdout_features(scores_test, scores_holdout, features_var, 
+								'_'.join(parsed.output_fig_filename, sample_name), "accu")
+			plot_holdout_features(scores_test, scores_holdout, features_var, 
+								'_'.join(parsed.output_fig_filename, sample_name), "sens_n_spec")
+			plot_holdout_features(scores_test, scores_holdout, features_var, 
+								'_'.join(parsed.output_fig_filename, sample_name), "prob_DE")
+			plot_holdout_features(scores_test, scores_holdout, features_var, 
+								'_'.join(parsed.output_fig_filename, sample_name), "rel_prob_DE")
 
 
 	elif parsed.ranking_method == "holdout_feature_regression":
 		## parse input 
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		sample_name = 'combined-all'
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
-		labels, cc_data, cc_features = process_data_collection(files_cc, files_de, 
-												valid_sample_names, sample_name, label_type,
-												feature_filtering_prefix)
-		## print label information: dummy regressor?
-		## model the holdout feature
-		regressor = "RidgeRegressor"
-		scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
-													cc_features, sample_name, regressor, False,
-													10, 100, False)
+		data_collection, cc_features = process_data_collection(files_cc, files_de,
+													valid_sample_names, label_type,)
+		## query samples
+		for sample_name in sorted(data_collection.keys()):
+			labels, cc_data = query_data_collection(data_collection, sample_name, 
+													cc_features, feature_filtering_prefix)
+			## print label information: dummy regressor? -> average lfc 
+			## model the holdout feature
+			# regressor = "KernelRidgeRegressor"
+			# regressor = "RandomForestRegressor"
+			regressor = "GradientBoostingRegressor"
+			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
+															labels, cc_features, sample_name, 
+															regressor, False, 20, 100, False)
+			
+			rsq_hist = np.histogram(scores_test['rsq'])
+			var_exp_hist = np.histogram(scores_test['var_exp'])
+			lfc_hist = np.histogram(scores_test['lfc'])
+			print "-------------------------------------"
+			print "R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['rsq']), np.min(scores_test['rsq']), np.median(scores_test['rsq']))
+			# print rsq_hist[0]
+			# print rsq_hist[1]
+			print "Var explained: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['var_exp']), np.min(scores_test['var_exp']), np.median(scores_test['var_exp']))
+			# print var_exp_hist[0]
+			# print var_exp_hist[1]
+			# print "Predicted LFC:" 
+			# print lfc_hist[0]
+			# print lfc_hist[1]
 
+			print "-------------------------------------"
 	
 
 	elif parsed.ranking_method == "tree_rank_highest_peaks":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		sample_name = 'combined-all'
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
-		labels, cc_data, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, sample_name, label_type,
-												feature_filtering_prefix)
+		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
+												valid_sample_names, label_type,)
+		## query samples
+		sample_name = 'combined-all'
+		labels, cc_data = query_data_collection(data_collection, sample_name, 
+												cc_features, feature_filtering_prefix)
 		## print label information
 		chance = calculate_chance(labels)
 		## rank features
