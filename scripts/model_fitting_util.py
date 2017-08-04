@@ -6,10 +6,11 @@ import yaml
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
-from sklearn.linear_model import LogisticRegression, RidgeCV
-from sklearn.kernel_ridge import KernelRidge
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import LogisticRegression, RidgeCV
+from sklearn.kernel_ridge import KernelRidge
+from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.metrics import explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
 from bayes_opt import BayesianOptimization
@@ -267,6 +268,8 @@ def construct_regression_model(X, y, regressor):
 		model = RandomForestRegressor()
 	elif regressor == "GradientBoostingRegressor":
 		model = GradientBoostingRegressor()
+	elif regressor == "GaussianProcessRegressor":
+		model = GaussianProcessRegressor()
 	else:
 		sys.exit(regressor +" not implemented yet!")
 
@@ -347,6 +350,7 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 	return hyparam
 
 
+<<<<<<< HEAD
 def plot_holdout_features(scores_test, scores_holdout, features_var, filename, metric="accu"):
 	features = sorted(features_var.keys())
 	if len(features_var)==7:
@@ -356,19 +360,30 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 		features.pop(5)
 		features.insert(3,features[4])
 		features.pop(5)
+=======
+def plot_holdout_features(scores_test, scores_holdout, features_var, feature_names, filename, metric="accu"):
+	# feature_names = sorted(features_var.keys())
+	# if len(features_var)==7:
+	# 	feature_names.insert(1,feature_names[4])
+	# 	feature_names.pop(5)
+	# 	feature_names.insert(2,feature_names[4])
+	# 	feature_names.pop(5)
+	# 	feature_names.insert(3,feature_names[4])
+	# 	feature_names.pop(5)
+>>>>>>> e9077ead53b6aa5f525c8fc89d92ea3d378c1742
 	
 	## define subplots
 	fig = plt.figure(num=None, figsize=(10, 7), dpi=300)
-	num_cols = np.ceil(np.sqrt(len(features)))
-	num_rows = np.ceil(len(features)/num_cols)
+	num_cols = np.ceil(np.sqrt(len(feature_names)))
+	num_rows = np.ceil(len(feature_names)/num_cols)
 	num_cols = int(num_cols)
 	num_rows = int(num_rows)
 	for i in range(num_rows):
 		for j in range(num_cols):
 			k = num_cols*i+j ## feature index
-			if k < len(features):
+			if k < len(feature_names):
 				if metric == "accu":
-					accu_ho = np.array(scores_holdout["accu"][features[k]])
+					accu_ho = np.array(scores_holdout["accu"][feature_names[k]])
 					num_var = accu_ho.shape[1]
 					## relative to testing acc
 					accu_ho = accu_ho - np.repeat(np.array(scores_test["accu"])[np.newaxis].T, 
@@ -379,14 +394,14 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 
 					## make plots
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
-					ax.fill_between(features_var[features[k]], accu_ho_min, accu_ho_max, facecolor="blue", alpha=.25)
-					ax.plot(features_var[features[k]], accu_ho_med, 'k', linewidth=2)
-					ax.set_title('%s' % features[k])
+					ax.fill_between(features_var[feature_names[k]], accu_ho_min, accu_ho_max, facecolor="blue", alpha=.25)
+					ax.plot(features_var[feature_names[k]], accu_ho_med, 'k', linewidth=2)
+					ax.set_title('%s' % feature_names[k])
 					ax.set_ylim(-.5, .5)
 
 				elif metric == "sens_n_spec":
-					sens_ho = np.array(scores_holdout["sens"][features[k]])
-					spec_ho = np.array(scores_holdout["spec"][features[k]])
+					sens_ho = np.array(scores_holdout["sens"][feature_names[k]])
+					spec_ho = np.array(scores_holdout["spec"][feature_names[k]])
 					num_var = sens_ho.shape[1]
 					## relative to testing acc
 					sens_ho = sens_ho - np.repeat(np.array(scores_test["sens"])[np.newaxis].T, 
@@ -402,17 +417,17 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 
 					## make plots
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
-					ax.fill_between(features_var[features[k]], sens_ho_min, sens_ho_max, 
+					ax.fill_between(features_var[feature_names[k]], sens_ho_min, sens_ho_max, 
 									facecolor="#336666", alpha=.25)
-					ax.plot(features_var[features[k]], sens_ho_med, "#336666", linewidth=2)
-					ax.fill_between(features_var[features[k]], spec_ho_min, spec_ho_max, 
+					ax.plot(features_var[feature_names[k]], sens_ho_med, "#336666", linewidth=2)
+					ax.fill_between(features_var[feature_names[k]], spec_ho_min, spec_ho_max, 
 									facecolor="#6d212d", alpha=.25)
-					ax.plot(features_var[features[k]], spec_ho_med, "#6d212d", linewidth=2)
-					ax.set_title('%s' % features[k])
+					ax.plot(features_var[feature_names[k]], spec_ho_med, "#6d212d", linewidth=2)
+					ax.set_title('%s' % feature_names[k])
 					ax.set_ylim(-.5, .5)
 
 				elif metric == "prob_DE":
-					prDE_ho = np.array(scores_holdout["prDE"][features[k]])
+					prDE_ho = np.array(scores_holdout["prDE"][feature_names[k]])
 					num_var = prDE_ho.shape[1]
 					## relative to testing acc
 					prDE_ho_med = np.median(prDE_ho, axis=0)
@@ -423,15 +438,15 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 
 					## make plots
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
-					# ax.fill_between(features_var[features[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
-					ax.fill_between(features_var[features[k]], prDE_ho_pctl[0], prDE_ho_pctl[1], facecolor="#0066cc", alpha=.25)
-					ax.plot(features_var[features[k]], prDE_ho_med, "#0066cc", linewidth=2)
-					ax.set_title('%s' % features[k])
+					# ax.fill_between(features_var[feature_names[k]], prDE_ho_min, prDE_ho_max, facecolor="blue", alpha=.25)
+					ax.fill_between(features_var[feature_names[k]], prDE_ho_pctl[0], prDE_ho_pctl[1], facecolor="#0066cc", alpha=.25)
+					ax.plot(features_var[feature_names[k]], prDE_ho_med, "#0066cc", linewidth=2)
+					ax.set_title('%s' % feature_names[k])
 					ax.set_ylim(0, 1)
 
 				elif metric == "rel_prob_DE":
 					## calculate relative prob of predicting DE
-					prDE_ho = np.array(scores_holdout["prDE"][features[k]])
+					prDE_ho = np.array(scores_holdout["prDE"][feature_names[k]])
 					num_var = prDE_ho.shape[1]
 					prDE_ho_sub = prDE_ho - np.repeat(np.array(scores_test["prDE"])[np.newaxis].T, num_var, axis=1)
 					## relative to testing acc 
@@ -454,11 +469,11 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, filename, m
 						prDE_ho_pctl_neg[1].append(np.percentile(prDE_ho_neg, 97.5))
 					## make plots
 					ax = fig.add_subplot(num_rows, num_cols, k+1)
-					ax.fill_between(features_var[features[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)
-					ax.fill_between(features_var[features[k]], prDE_ho_pctl_neg[0], prDE_ho_pctl_neg[1], facecolor="#FFA500", alpha=.25)
-					ax.plot(features_var[features[k]], prDE_ho_med_pos, "#0066cc", linewidth=2)
-					ax.plot(features_var[features[k]], prDE_ho_med_neg, "#FFA500", linewidth=2)
-					ax.set_title('%s' % features[k])
+					ax.fill_between(features_var[feature_names[k]], prDE_ho_pctl_pos[0], prDE_ho_pctl_pos[1], facecolor="#0066cc", alpha=.25)
+					ax.fill_between(features_var[feature_names[k]], prDE_ho_pctl_neg[0], prDE_ho_pctl_neg[1], facecolor="#FFA500", alpha=.25)
+					ax.plot(features_var[feature_names[k]], prDE_ho_med_pos, "#0066cc", linewidth=2)
+					ax.plot(features_var[feature_names[k]], prDE_ho_med_neg, "#FFA500", linewidth=2)
+					ax.set_title('%s' % feature_names[k])
 					ax.set_ylim(-.5, .5)
 
 				else:
@@ -618,7 +633,7 @@ def query_data_collection(data_collection, query_sample_name, cc_features, featu
 		indx = [i for i in range(len(cc_features)) if cc_features[i].startswith(feature_prefix)]
 		cc_features = cc_features[indx]
 		cc_data = cc_data[:,indx]
-	return (labels, cc_data)
+	return (labels, cc_data, cc_features)
 
 
 def calculate_chance(labels, verbose=True):
