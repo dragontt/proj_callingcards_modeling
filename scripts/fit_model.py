@@ -50,10 +50,10 @@ def main(argv):
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, label_type,)
+												valid_sample_names, label_type)
 		## query samples
-		# for sample_name in ['combined-all']:
-		for sample_name in sorted(data_collection.keys()):
+		for sample_name in ['combined-all']:
+		# for sample_name in sorted(data_collection.keys()):
 			labels, cc_data, cc_features = query_data_collection(data_collection, sample_name, 
 												cc_features, feature_filtering_prefix)
 			## print label information
@@ -62,7 +62,7 @@ def main(argv):
 			classifier = "RandomForestClassifier"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, labels, 
 														cc_features, sample_name, classifier, 
-														True, 5, 100, False)
+														True, 10, 100, False)
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
 								'_'.join([parsed.output_fig_filename, sample_name]), "accu")
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
@@ -78,15 +78,15 @@ def main(argv):
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		data_collection, cc_features = process_data_collection(files_cc, files_de,
-													valid_sample_names, label_type,)
+													valid_sample_names, label_type)
 		## query samples
 		for sample_name in sorted(data_collection.keys()):
 			labels, cc_data, cc_features= query_data_collection(data_collection, sample_name, 
 													cc_features, feature_filtering_prefix)
 			## print label information: dummy regressor? -> average lfc 
 			## model the holdout feature
-			regressor = "KernelRidgeRegressor"
-			# regressor = "RandomForestRegressor"
+			# regressor = "RidgeRegressor"
+			regressor = "RandomForestRegressor"
 			# regressor = "GaussianProcessRegressor"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 															labels, cc_features, sample_name, 
@@ -114,7 +114,7 @@ def main(argv):
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
 		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, label_type,)
+												valid_sample_names, label_type)
 		## query samples
 		sample_name = 'combined-all'
 		labels, cc_data, cc_features = query_data_collection(data_collection, sample_name, 

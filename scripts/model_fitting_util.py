@@ -350,18 +350,8 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 	return hyparam
 
 
-<<<<<<< HEAD
-def plot_holdout_features(scores_test, scores_holdout, features_var, filename, metric="accu"):
+def plot_holdout_features(scores_test, scores_holdout, features_var, features, filename, metric="accu"):
 	features = sorted(features_var.keys())
-	if len(features_var)==7:
-		features.insert(1,features[4])
-		features.pop(5)
-		features.insert(2,features[4])
-		features.pop(5)
-		features.insert(3,features[4])
-		features.pop(5)
-=======
-def plot_holdout_features(scores_test, scores_holdout, features_var, feature_names, filename, metric="accu"):
 	# feature_names = sorted(features_var.keys())
 	# if len(features_var)==7:
 	# 	feature_names.insert(1,feature_names[4])
@@ -370,7 +360,6 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, feature_nam
 	# 	feature_names.pop(5)
 	# 	feature_names.insert(3,feature_names[4])
 	# 	feature_names.pop(5)
->>>>>>> e9077ead53b6aa5f525c8fc89d92ea3d378c1742
 	
 	## define subplots
 	fig = plt.figure(num=None, figsize=(10, 7), dpi=300)
