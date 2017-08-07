@@ -509,7 +509,7 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 	## parse labels of orfs
 	cc, features = parse_cc_matrix(file_cc)
 	orfs, lfcs = parse_de_matrix(file_label)
-	
+
 	## find common orfs (samples) for feature ranking
 	cc_out = []
 	for i in range(len(orfs)):
@@ -520,8 +520,7 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 		else:
 			cc_out.append([0.]*len(features))
 	cc_out = np.array(cc_out, dtype=float)
-
-	return cc_out, lfcs, features, orfs
+	return cc_out, np.absolute(lfcs), features, orfs
 
 
 def parse_de_matrix(file, label_bound=15):
@@ -530,7 +529,7 @@ def parse_de_matrix(file, label_bound=15):
 	orfs = data[:,0]
 	lfcs = np.array(data[:,1], dtype=float)
 	## get proper systematic name
-	valid = [orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W")) for i in range(len(orfs))] 
+	valid = [i for i in range(len(orfs)) if orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W"))] 
 	orfs = orfs[valid]
 	lfcs = lfcs[valid]
 	## set upper and lower bound on logFC
@@ -598,7 +597,7 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 			if label_type == "binary":
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
 			elif label_type == "continuous":
-				file_label = np.array(file_labels)[[os.path.basename(l).split('.')[0] == sn for l in file_labels]][0] ## find the continuous label file that matches CC file 
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label)
 			else:
 				sys.exit("No label type given!")
