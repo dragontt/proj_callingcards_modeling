@@ -25,6 +25,7 @@ def parse_args(argv):
     parser.add_argument("-t","--file_total_hops_reads", default="../output/total_hops_and_reads.tbl")
     parser.add_argument("-b","--file_background", default="../output/NOTF_Minus_Adh1_2015_17_combined.orf_hops")
     parser.add_argument("-c","--dist_cutoff", default=200)
+    parser.add_argument("-bd","--binding_data", default="calling_cards", help="Choose from ['calling_cards',binding_potential']")
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -33,6 +34,7 @@ def load_total_hops_and_reads(file):
 	## load total hops and total reads for each sample
 	cnt_dict = {}
 	data = np.loadtxt(file, dtype=str)
+	print data
 	for i in range(len(data)):
 		cnt_dict[data[i,0]] = {}
 		cnt_dict[data[i,0]]["hops"] = float(data[i,1])
@@ -52,7 +54,7 @@ def load_orf_peaks(file):
 						names=["Orf","TPH","RPH","Strand","Dist"])
 
 
-def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals, bkgd_totals):
+def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, bkgd = "", expt_totals = "", bkgd_totals = ""):
 	## get number of bins
 	#shift = bin_width/2
 	# bins = (prom_range[1]-prom_range[0]) *2 / bin_width - 1
@@ -89,8 +91,12 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 
 			for k in bin_dict.keys():
 				if expt_dist >= bin_dict[k][0] and expt_dist < bin_dict[k][1]:
-					curr_tph = 100000/expt_totals["hops"]
-					curr_rph = row["Reads"] * 100000/expt_totals["reads"]
+					if binding_data=="calling_cards":
+						curr_tph = 100000/expt_totals["hops"]
+						curr_rph = row["Reads"] * 100000/expt_totals["reads"]
+					else:
+						curr_tph = 1
+						curr_rph = row["Reads"]
 					feature_mtx[i, k*3] += curr_tph
 					feature_mtx[i, k*3+1] += curr_rph
 					feature_mtx[i, k*3+2] += np.log2(curr_rph)
@@ -110,11 +116,6 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 						feature_mtx[i, k*3] -= curr_tph
 						feature_mtx[i, k*3+1] -= curr_rph
 						feature_mtx[i, k*3+2] -= np.log2(curr_rph)
-						if orf == "YAL053W":
-							print bin_dict[k], 1, row_bkgd["Reads"], np.log2(curr_rph)
-							# print feature_mtx[i,]
-		if orf == "YAL053W":
-			sys.exit()
 
 	## set negative entries to zero
 	feature_mtx[feature_mtx < 0] = 0
@@ -122,7 +123,25 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 	## sum tph, rph, logrph (every 3 columns)
 	for i in range(3):
 		feature_mtx[:, bins*3+i] = np.sum(feature_mtx[:, np.arange(0,bins*3,3)+i], axis=1)
-	
+		if binding_data=="calling_cards":
+			if orf in list(bkgd["Orf"]):
+				for j, row in bkgd.loc[bkgd["Orf"] == orf].iterrows():
+					bkgd_dist = row["Dist"]
+
+					for k in bin_dict.keys():
+						if bkgd_dist >= bin_dict[k][0] and bkgd_dist < bin_dict[k][1]:
+							curr_tph = 100000/bkgd_totals["hops"]
+							curr_rph = row["Reads"] * 100000/bkgd_totals["reads"]
+							feature_mtx[i, k*3] -= curr_tph
+							feature_mtx[i, k*3+1] -= curr_rph
+							feature_mtx[i, k*3+2] -= np.log2(curr_rph)
+		## set negative entries to zero
+		feature_mtx[feature_mtx < 0] = 0
+
+		## sum tph, rph, logrph (every 3 columns)
+		for i in range(3):
+			feature_mtx[:, bins*3+i] = np.sum(feature_mtx[:, np.arange(0,bins*3,3)+i], axis=1)
+
 	feature_mtx = np.hstack(( orfs[np.newaxis].T, feature_mtx ))
 	feature_mtx = np.vstack(( np.array(['#orf']+feature_header)[np.newaxis], feature_mtx ))
 
@@ -303,6 +322,14 @@ def main(argv):
 	if promoter_range[0] > 0:
 		promoter_range[0] = -1*promoter_range[0]
 
+	if parsed.binding_data == "binding_potential":
+		writer = open(parsed.output_dir +"/total_hops_and_reads.tbl", "w")
+		writer.write("#file_basename\thop_cnt\tread_cnt\n")
+		for file_orfhops in glob.glob(parsed.output_dir +"/*.orf_hops"):
+			sample_basename = os.path.splitext(os.path.basename(file_orfhops))[0]
+			writer.write("%s\t%d\t%d\n" % (sample_basename, 0, 0))
+		writer.close()
+
 	if parsed.feature_model == "binned_promoter":
 		## get total hops and reads, and background data
 		totals_dict = load_total_hops_and_reads(parsed.file_total_hops_reads)
@@ -328,6 +355,38 @@ def main(argv):
 										experiment_totals, background_totals)
 			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
 			write_feature_matrix(file_output, feature_matrix)
+		
+		if parsed.binding_data == "binding_potential":
+			files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
+			for file_in in files_experiment:
+				file_in_basename = os.path.basename(file_in).split(".")[0]
+				print "... working on", file_in_basename
+				experiment = load_orf_hops(file_in)
+				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range, experiment)
+				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
+				write_feature_matrix(file_output, feature_matrix)
+
+		elif parsed.binding_data == "calling_cards":
+			## get total hops and reads, and background data
+			totals_dict = load_total_hops_and_reads(parsed.file_total_hops_reads)
+			file_basename_background = os.path.splitext(os.path.basename(parsed.file_background))[0]
+			background_totals = totals_dict[file_basename_background]
+			background = load_orf_hops(parsed.file_background)
+
+			## generate features in binned promoter regions
+			files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
+			files_experiment.remove(parsed.file_background)
+			for file_in in files_experiment:
+				file_in_basename = os.path.basename(file_in).split(".")[0]
+				print "... working on", file_in_basename
+				experiment_totals = totals_dict[file_in_basename]
+				experiment = load_orf_hops(file_in)
+				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range,
+											experiment, background,
+											experiment_totals, background_totals)
+				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
+				write_feature_matrix(file_output, feature_matrix)
+>>>>>>> refs/remotes/origin/master
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
