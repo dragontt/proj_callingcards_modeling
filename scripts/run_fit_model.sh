@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --mem-per-cpu=24G
+#SBATCH --mem-per-cpu=64G
 #SBATCH -n 1
 #SBATCH -o ../log/run_fit_model.out
 #SBATCH -e ../log/run_fit_model.err
@@ -7,11 +7,10 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=yiming.kang@wustl.edu
 
+module load pandas
 module load scipy
 module load scikit-learn
 module load matplotlib
+module load biopython
 
-#python fit_model.py -m holdout_feature_variation -c ../output/ -o ../resources/optimized_cc_subset.txt -f ../output/feature_holdout_analysis.6_mimic_cc > ../log/gb_bo.out 2> ../log/gb_bo.err
-
-python fit_model.py -m holdout_feature_variation -c ../output/ -t binned_promoter -o ../resources/optimized_cc_subset.txt -f ../output/feature_bin_prom_analysis.6_mimic_cc > ../log/bin_prom.out 2> ../log/bin_prom.err
-
+python fit_model.py -m holdout_feature_regression -t binned_promoter -c ../output/ -d ../resources/ > ../log/bin_prom.GP.out 2> ../log/bin_prom.GP.err

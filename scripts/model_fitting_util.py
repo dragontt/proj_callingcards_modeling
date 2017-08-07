@@ -11,6 +11,7 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier,
 from sklearn.linear_model import LogisticRegression, RidgeCV
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.neural_network import MLPRegressor
 from sklearn.metrics import explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
 from sklearn.dummy import DummyRegressor
@@ -206,7 +207,7 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 			scores_test["lfc"] += list(y_pred)
 
 		print "R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_train), np.min(scores_train), np.median(scores_train))
-		
+
 		## TODO: add feature variation
 
 	return (scores_test, scores_holdout, features_var)
@@ -274,7 +275,9 @@ def construct_regression_model(X, y, regressor):
 	elif regressor == "GradientBoostingRegressor":
 		model = GradientBoostingRegressor()
 	elif regressor == "GaussianProcessRegressor":
-		model = GaussianProcessRegressor()
+		model = GaussianProcessRegressor(n_restarts_optimizer=0)
+	elif regressor == "MLPRegressor":
+		model = MLPRegressor()
 	else:
 		sys.exit(regressor +" not implemented yet!")
 
@@ -529,15 +532,19 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 	return cc_out, np.absolute(lfcs), features, orfs
 
 
-def parse_de_matrix(file, label_bound=15):
+def parse_de_matrix(file, p_cutoff=1., label_bound=15):
 	## load data
-	data = np.loadtxt(file, dtype=str, delimiter='\t', usecols=[0,2])
+	data = np.loadtxt(file, dtype=str, delimiter='\t')
 	orfs = data[:,0]
-	lfcs = np.array(data[:,1], dtype=float)
+	pvals = np.array(data[:,1], dtype=float)
+	lfcs = np.array(data[:,2], dtype=float)
 	## get proper systematic name
 	valid = [i for i in range(len(orfs)) if orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W"))] 
 	orfs = orfs[valid]
+	pvals = pvals[valid]
 	lfcs = lfcs[valid]
+	## set logFC to zero if having insignificant p value
+	lfcs[pvals > p_cutoff] = 0
 	## set upper and lower bound on logFC
 	lfcs[lfcs > label_bound] = label_bound
 	lfcs[lfcs < -1*label_bound] = -1*label_bound
@@ -600,7 +607,7 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
 		if (sn in valid_sample_names) and (not sn.startswith('BY4741')):
 			print '... loading %s' % sn
-			if label_type == "binary":
+			if label_type == "categorical":
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
 			elif label_type == "continuous":
 				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file

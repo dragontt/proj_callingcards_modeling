@@ -36,7 +36,7 @@ def main(argv):
 	if parsed.optimized_labels: ## parse optimized set if available 
 		optimized_labels = parse_optimized_labels(parsed.optimized_labels)
 		valid_sample_names = optimized_labels.keys()
-		label_type = "binary"
+		label_type = "categorical"
 	elif parsed.de_dir: ## parse valid DE samples if available
 		files_de = glob.glob(parsed.de_dir +"/*.DE.tsv")
 		valid_sample_names = [os.path.basename(f).split('.')[0] for f in files_de]
@@ -84,17 +84,15 @@ def main(argv):
 			labels, cc_data, cc_features= query_data_collection(data_collection, sample_name, 
 													cc_features, feature_filtering_prefix)
 
-			np.histogram(labels)
-			sys.exit()
-
 			## print label information: dummy regressor? -> average lfc 
 			print "Dummy regressor:", calculate_dummy_regression_score(cc_data, labels)
 
 			## model the holdout feature
 			# regressor = "RidgeRegressor"
 			# regressor = "RandomForestRegressor"
-			regressor = "GradientBoostingRegressor"
+			# regressor = "GradientBoostingRegressor"
 			# regressor = "GaussianProcessRegressor"
+			regressor = "MLPRegressor"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 															labels, cc_features, sample_name, 
 															regressor, False, 20, 100, False)
