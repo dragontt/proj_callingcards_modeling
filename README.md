@@ -63,12 +63,19 @@ pip install --user mlxtend
     python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 	``` 
 
-5. Fit tree-based model and visualize data
-	
+5. Model CC features as a function of DE classes or absolute log fold-change
+    1. Classification
+
 	```
     python fit_model.py -m holdout_feature_classification -t highest_peaks -c ../output/ \
     -l ../resources/optimized_cc_subset.txt -o ../output/feature_holdout_analysis.6_mimic_cc
 	```
+
+    2. Regression
+
+    ```
+    python fit_model.py -m holdout_feature_regression -t binned_promoter -c ../output/ -d ../resources/
+    ```
 
 ### Visualizing Peaks in IGV
 
