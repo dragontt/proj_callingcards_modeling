@@ -13,6 +13,7 @@ from sklearn.kernel_ridge import KernelRidge
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.metrics import explained_variance_score, r2_score
 from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
+from sklearn.dummy import DummyRegressor
 from bayes_opt import BayesianOptimization
 
 from sklearn.pipeline import make_pipeline
@@ -188,11 +189,13 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 		features_var = {}
 
 		## perform CV
+		scores_train = []
 		for k, (train, test) in enumerate(k_fold.split(X, y)):
 			## construct model 
 			model = construct_regression_model(X[train], y[train], algorithm)
 			## train the model
 			model.fit(X[train], y[train])
+			scores_train.append(model.score(X[train], y[train]))
 			## test without varying feature
 			# rsq = model.score(X[test], y[test])
 			y_pred = model.predict(X[test])
@@ -202,6 +205,8 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 			scores_test["var_exp"].append(var_exp)
 			scores_test["lfc"] += list(y_pred)
 
+		print "R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_train), np.min(scores_train), np.median(scores_train))
+		
 		## TODO: add feature variation
 
 	return (scores_test, scores_holdout, features_var)
@@ -632,6 +637,12 @@ def calculate_chance(labels, verbose=True):
 	if verbose:
 		print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
 	return chance
+
+
+def calculate_dummy_regression_score(X, y):
+	model = DummyRegressor()
+	model.fit(X, y)
+	return model.score(X, y)
 
 
 def rank_features_RFE(features, X, y, estimator_type, cv=False):

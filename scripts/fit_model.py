@@ -83,10 +83,17 @@ def main(argv):
 		for sample_name in sorted(data_collection.keys()):
 			labels, cc_data, cc_features= query_data_collection(data_collection, sample_name, 
 													cc_features, feature_filtering_prefix)
+
+			np.histogram(labels)
+			sys.exit()
+
 			## print label information: dummy regressor? -> average lfc 
+			print "Dummy regressor:", calculate_dummy_regression_score(cc_data, labels)
+
 			## model the holdout feature
 			# regressor = "RidgeRegressor"
-			regressor = "RandomForestRegressor"
+			# regressor = "RandomForestRegressor"
+			regressor = "GradientBoostingRegressor"
 			# regressor = "GaussianProcessRegressor"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 															labels, cc_features, sample_name, 
