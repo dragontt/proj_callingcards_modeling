@@ -78,6 +78,8 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 	orf_counter = 0
 	for i in range(len(orfs)):
 		orf = orfs[i]
+		if orf =="YAL053W":
+			print orf
 		orf_counter += 1
 		if orf_counter % 1000 == 0:
 			print "Analyzing "+str(orf_counter)+"th orf"
@@ -92,26 +94,35 @@ def generate_binned_hop_features(expt, bkgd, bin_width, prom_range, expt_totals,
 					feature_mtx[i, k*3] += curr_tph
 					feature_mtx[i, k*3+1] += curr_rph
 					feature_mtx[i, k*3+2] += np.log2(curr_rph)
+					if orf == "YAL053W":
+						print bin_dict[k], 1, row["Reads"]
+						print feature_mtx[i,]
 
 		## subtract normalized background hops and reads in bins
 		if orf in list(bkgd["Orf"]):
-			for j, row in bkgd.loc[bkgd["Orf"] == orf].iterrows():
-				bkgd_dist = row["Dist"]
+			for jj, row_bkgd in bkgd.loc[bkgd["Orf"] == orf].iterrows():
+				bkgd_dist = row_bkgd["Dist"]
 
 				for k in bin_dict.keys():
 					if bkgd_dist >= bin_dict[k][0] and bkgd_dist < bin_dict[k][1]:
 						curr_tph = 100000/bkgd_totals["hops"]
-						curr_rph = row["Reads"] * 100000/bkgd_totals["reads"]
+						curr_rph = row_bkgd["Reads"] * 100000/bkgd_totals["reads"]
 						feature_mtx[i, k*3] -= curr_tph
 						feature_mtx[i, k*3+1] -= curr_rph
 						feature_mtx[i, k*3+2] -= np.log2(curr_rph)
-		## set negative entries to zero
-		feature_mtx[feature_mtx < 0] = 0
+						if orf == "YAL053W":
+							print bin_dict[k], 1, row_bkgd["Reads"], np.log2(curr_rph)
+							# print feature_mtx[i,]
+		if orf == "YAL053W":
+			sys.exit()
 
-		## sum tph, rph, logrph (every 3 columns)
-		for i in range(3):
-			feature_mtx[:, bins*3+i] = np.sum(feature_mtx[:, np.arange(0,bins*3,3)+i], axis=1)
+	## set negative entries to zero
+	feature_mtx[feature_mtx < 0] = 0
 
+	## sum tph, rph, logrph (every 3 columns)
+	for i in range(3):
+		feature_mtx[:, bins*3+i] = np.sum(feature_mtx[:, np.arange(0,bins*3,3)+i], axis=1)
+	
 	feature_mtx = np.hstack(( orfs[np.newaxis].T, feature_mtx ))
 	feature_mtx = np.vstack(( np.array(['#orf']+feature_header)[np.newaxis], feature_mtx ))
 
@@ -302,6 +313,11 @@ def main(argv):
 		## generate features in binned promoter regions
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
 		files_experiment.remove(parsed.file_background)
+		
+
+		files_experiment = [parsed.input_dir + '/YBR033W-minusLys.orf_hops']
+
+
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
 			print "... working on", file_in_basename
