@@ -358,7 +358,7 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 	return hyparam
 
 
-def plot_holdout_features(scores_test, scores_holdout, features_var, features, filename, metric="accu"):
+def plot_holdout_features(scores_test, scores_holdout, features_var, feature_names, filename, metric="accu"):
 	features = sorted(features_var.keys())
 	# feature_names = sorted(features_var.keys())
 	# if len(features_var)==7:

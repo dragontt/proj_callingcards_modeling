@@ -89,10 +89,10 @@ def main(argv):
 
 			## model the holdout feature
 			# regressor = "RidgeRegressor"
-			# regressor = "RandomForestRegressor"
+			regressor = "RandomForestRegressor"
 			# regressor = "GradientBoostingRegressor"
 			# regressor = "GaussianProcessRegressor"
-			regressor = "MLPRegressor"
+			# regressor = "MLPRegressor"
 			scores_test, scores_holdout, features_var = model_holdout_feature(cc_data, 
 															labels, cc_features, sample_name, 
 															regressor, False, 20, 100, False)
