@@ -238,6 +238,23 @@ def main(argv):
 				print "10-fold cross-validation"
 				sequential_rank_features(cc_features, cc_data, labels, method=parsed.ranking_method, cv=10, verbose=True)
 
+
+	elif parsed.ranking_method == "simple_precision_recall":
+		## parse input
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type)
+		## query samples
+		for sample_name in ['combined-all']:
+		# for sample_name in sorted(data_collection.keys()):
+			for feature_filtering_prefix in ["tph_total", "rph_total", "logrph_total"]:
+				labels, cc_data, _ = query_data_collection(data_collection,
+															sample_name, cc_features, 
+															feature_filtering_prefix)
+				## plot precision-recall with randomly permuted signals
+				figname = '../output/PR_'+ feature_filtering_prefix.split('_')[0] +'.'+ sample_name +'.pdf'
+				plot_precision_recall_w_random_signal(cc_data, labels, figname)
+
 	else:
 		sys.exit("Wrong ranking method!")
 

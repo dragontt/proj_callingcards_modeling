@@ -109,7 +109,7 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	# os.system('dot -Tpng ../output/tree.dot -o ../output/tree.png')
 
 
-def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=10, c=20, opt_param=False, verbose=True):
+def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, num_fold=10, num_step=20, opt_param=False, verbose=True):
 	"""
 	Use K-1 folds of samples to train a model, then use the holdout samples 
 	to test the model. In testing, one feature will be varied within a range
@@ -118,7 +118,7 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 	"""
 	if is_classif:
 		## define K folds for CV
-		k_fold = StratifiedKFold(k, shuffle=True, random_state=1)
+		k_fold = StratifiedKFold(num_fold, shuffle=True, random_state=1)
 		scores_test = {"accu":[], "sens":[], "spec":[], "prDE":[]}
 		scores_holdout = {"accu":{}, "sens":{}, "spec":{}, "prDE":{}}
 		features_var = {}
@@ -151,9 +151,9 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, k=
 				# f_max = max(X[:,i])
 				f_max = max(X[:,i]) if features[i].endswith("Dist") else np.percentile(X[:,i], 95)
 				f_min = min(X[:,i])
-				step = (f_max-f_min)/float(c) 
+				step = (f_max-f_min)/float(num_step) 
 				feature_values = np.arange(f_min, f_max+step, step)
-				# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(c)
+				# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(num_step)
 				# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
 				accu_ho = []
 				sens_ho = []
@@ -493,6 +493,42 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, feature_nam
 	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
 
 
+def calculate_precision_recall(X0, y0, DE_p_thld=0.05):
+	from sklearn.metrics import precision_recall_curve, average_precision_score
+	## treat CC signal as probability of predicting DE
+	X0 = np.ndarray.flatten(X0)
+	X = X0/float(np.max(X0))
+	## convert to categorical labels
+	y = -1*np.ones(len(y0))
+	y[y0 < DE_p_thld] = 1
+	precision, recall, _ = precision_recall_curve(y, X)
+	aupr = average_precision_score(y, X)
+	return precision, recall, aupr
+
+
+def plot_precision_recall_w_random_signal(cc_data, labels, figname):
+	## true signals
+	plt.figure(num=None, figsize=(6, 5), dpi=300)
+	precision, recall, aupr = calculate_precision_recall(cc_data, labels, 0.1)
+	plt.plot(recall, precision, color="blue", lw=2,label="experiment (AUPR=%.3f)" % aupr)
+	## randomly permute signals
+	precision_rnd = []
+	recall_rnd = []
+	aupr_rnd = []
+	for i in range(100):
+		tmp_pr, tmp_re, tmp_aupr = calculate_precision_recall(np.random.permutation(cc_data), labels)
+		precision_rnd.append(tmp_pr)
+		recall_rnd.append(tmp_re)
+		aupr_rnd.append(tmp_aupr)
+	plt.fill_between(np.median(np.array(recall_rnd),axis=0), np.min(np.array(precision_rnd),axis=0), np.max(np.array(precision_rnd),axis=0), color="lightgrey", lw=1,label="random (100 runs\nmedian AUPR=%.3f)" % np.median(aupr_rnd))
+	## set format
+	plt.xlabel('recall'); plt.ylabel('precision')
+	plt.xlim(0,1); plt.ylim(0,1)
+	leg= plt.legend()
+	leg.get_frame().set_edgecolor('k')
+	plt.savefig(figname, fmt='pdf')
+
+
 def cal_sens_n_spec(y, y_pred):
 	tp, fp, fn, tn = 0,0,0,0
 	for i in range(len(y)):
@@ -546,14 +582,14 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 	return cc_out, np.absolute(lfcs), features, orfs
 
 
-def parse_de_matrix(file, p_cutoff=1., label_bound=15):
+def parse_de_matrix(file, p_cutoff=1., label_bound=15, output_lfc=False):
 	## load data
 	data = np.loadtxt(file, dtype=str, delimiter='\t')
 	orfs = data[:,0]
 	pvals = np.array(data[:,1], dtype=float)
 	lfcs = np.array(data[:,2], dtype=float)
 	## get proper systematic name
-	valid = [i for i in range(len(orfs)) if orfs[i].startswith("Y") and (orfs[i].endswith("C") or orfs[i].endswith("W"))] 
+	valid = [i for i in range(len(orfs)) if orfs[i].startswith("Y") and orfs[i].split('-')[0][-1] in ['W','C']] 
 	orfs = orfs[valid]
 	pvals = pvals[valid]
 	lfcs = lfcs[valid]
@@ -564,7 +600,10 @@ def parse_de_matrix(file, p_cutoff=1., label_bound=15):
 	lfcs[lfcs < -1*label_bound] = -1*label_bound
 	## sort by systematic orf name
 	indx = np.argsort(orfs)
-	return orfs[indx], lfcs[indx]
+	if output_lfc:
+		return orfs[indx], lfcs[indx]
+	else:
+		return orfs[indx], pvals[indx]
 
 
 def parse_cc_matrix(file):
