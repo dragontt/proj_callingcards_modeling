@@ -12,8 +12,8 @@ from sklearn.linear_model import LogisticRegression, RidgeCV
 from sklearn.kernel_ridge import KernelRidge
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.neural_network import MLPRegressor
-from sklearn.metrics import explained_variance_score, r2_score
-from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, RandomizedSearchCV
+from sklearn.metrics import explained_variance_score, r2_score, precision_recall_curve, average_precision_score
+from sklearn.model_selection import cross_val_score, KFold, StratifiedKFold, train_test_split, RandomizedSearchCV
 from sklearn.dummy import DummyRegressor
 from bayes_opt import BayesianOptimization
 
@@ -227,8 +227,8 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			print hyparam
 		else:
 			hyparam = {"n_estimators": 20, 
-						"max_depth": None, 
-						"min_samples_leaf": 1}
+						"max_depth": 3, 
+						"min_samples_leaf": 5}
 		## build model with desired hyperparameters
 		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
 										max_depth=hyparam["max_depth"],
@@ -493,8 +493,57 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, feature_nam
 	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
 
 
-def calculate_precision_recall(X0, y0, DE_p_thld=0.05):
-	from sklearn.metrics import precision_recall_curve, average_precision_score
+def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
+	results = []
+	num_rnd_permu = 80
+	## define training, testing split
+	X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=1./num_fold, random_state=1)
+	y_all_tr = np.empty(0)
+	y_pred_prob = np.empty(0)
+	y_rnd_prob = {}
+	for i in range(num_rnd_permu):
+		y_rnd_prob[i] = np.empty(0)
+	## perform CV
+	k_fold = StratifiedKFold(num_fold, shuffle=True, random_state=1)
+	sys.stderr.write("... cv: ") 
+	for k, (cv_tr, cv_te) in enumerate(k_fold.split(X_tr, y_tr)):
+		## construct model
+		sys.stderr.write("%d " % k) 
+		model = construct_classification_model(X_tr[cv_tr], y_tr[cv_tr], algorithm, opt_param)
+		model.fit(X_tr[cv_tr], y_tr[cv_tr]) 
+		## internal validation 
+		de_class_indx = np.where(model.classes_ == 1)[0][0]
+		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
+		y_pred_prob = np.append(y_pred_prob, model.predict_proba(X_tr[cv_te])[:,de_class_indx])
+		for i in range(num_rnd_permu):
+			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(np.random.permutation(X_tr[cv_te]))[:,de_class_indx]) ## randomly permute each column
+	## calculate AUPRs
+	aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
+	aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
+	print "\nCV AUPR = %.3f" % aupr_pred
+	print "CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
+
+	## model trained with full training set
+	model = construct_classification_model(X_tr, y_tr, algorithm, opt_param)
+	model.fit(X_tr, y_tr) 
+	de_class_indx = np.where(model.classes_ == 1)[0][0]
+	## predict with the leftout testing set
+	y_pred_prob = model.predict_proba(X_te)[:,de_class_indx] ## overwriting
+	for i in range(num_rnd_permu):
+		y_rnd_prob[i] = model.predict_proba(np.random.permutation(X_te))[:,de_class_indx] ## overwriting
+	## calculate AUPRs
+	aupr_pred = average_precision_score(y_te, y_pred_prob)
+	aupr_rnd = sorted([average_precision_score(y_te, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
+	print "\nTesting AUPR = %.3f" % aupr_pred
+	print "Testing Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]	
+
+	## TODO: return model trained with full training set and X_te, y_te
+	return results
+
+
+def calculate_precision_recall(X0, y0, DE_p_thld=0.1):
 	## treat CC signal as probability of predicting DE
 	X0 = np.ndarray.flatten(X0)
 	X = X0/float(np.max(X0))
@@ -503,30 +552,59 @@ def calculate_precision_recall(X0, y0, DE_p_thld=0.05):
 	y[y0 < DE_p_thld] = 1
 	precision, recall, _ = precision_recall_curve(y, X)
 	aupr = average_precision_score(y, X)
+	## special headling on the first actual prediction
+	# precision = precision[:-1]
+	# recall = recall[:-1]
+	# if y[np.argmax(X)] == 1:
+	# 	precision[-1] = 1
+	# 	recall[-1] = 2./(len(y)+1)
+	# else:
+	# 	precision[-1] = 1./2
+	# 	recall[-1] = 1./(len(y)+1)
 	return precision, recall, aupr
 
 
-def plot_precision_recall_w_random_signal(cc_data, labels, figname):
+def plot_precision_recall_w_random_signal(cc_data, labels, DE_p_thld, figname):
+	## check zero-length set
+	if len(labels) == 0:
+		return [np.nan]*5
+	num_rnd_permu = 80
 	## true signals
-	plt.figure(num=None, figsize=(6, 5), dpi=300)
-	precision, recall, aupr = calculate_precision_recall(cc_data, labels, 0.1)
-	plt.plot(recall, precision, color="blue", lw=2,label="experiment (AUPR=%.3f)" % aupr)
+	precision, recall, aupr = calculate_precision_recall(cc_data, labels, DE_p_thld)
+	print "AUPR = %.3f" % aupr
 	## randomly permute signals
 	precision_rnd = []
 	recall_rnd = []
 	aupr_rnd = []
-	for i in range(100):
-		tmp_pr, tmp_re, tmp_aupr = calculate_precision_recall(np.random.permutation(cc_data), labels)
+	for i in range(num_rnd_permu):
+		tmp_pr, tmp_re, tmp_aupr = calculate_precision_recall(np.random.permutation(cc_data), labels, DE_p_thld)
 		precision_rnd.append(tmp_pr)
 		recall_rnd.append(tmp_re)
 		aupr_rnd.append(tmp_aupr)
-	plt.fill_between(np.median(np.array(recall_rnd),axis=0), np.min(np.array(precision_rnd),axis=0), np.max(np.array(precision_rnd),axis=0), color="lightgrey", lw=1,label="random (100 runs\nmedian AUPR=%.3f)" % np.median(aupr_rnd))
-	## set format
-	plt.xlabel('recall'); plt.ylabel('precision')
-	plt.xlim(0,1); plt.ylim(0,1)
-	leg= plt.legend()
-	leg.get_frame().set_edgecolor('k')
-	plt.savefig(figname, fmt='pdf')
+	aupr_rnd = sorted(aupr_rnd)
+	## fix different PR length issue from randomized data
+	max_length = max([len(tmp_pr) for tmp_pr in precision_rnd])
+	for i in range(len(precision_rnd)):
+		tmp_pr = precision_rnd[i]
+		tmp_re = recall_rnd[i]
+		precision_rnd[i] = np.append(np.array([tmp_pr[0]]*(max_length-len(tmp_pr))), tmp_pr)
+		recall_rnd[i] = np.append(np.array([tmp_re[0]]*(max_length-len(tmp_re))), tmp_re)
+	print "Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	results = [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr]
+
+	## make plot
+	if figname:
+		plt.figure(num=None, figsize=(6, 5), dpi=300)
+		plt.plot(recall, precision, color="blue", lw=2,label="experiment (AUPR=%.3f)" % aupr)
+		plt.fill_between(np.median(np.array(recall_rnd),axis=0), np.min(np.array(precision_rnd),axis=0), np.max(np.array(precision_rnd),axis=0), color="lightgrey", lw=1,label="random (100 runs\nmedian AUPR=%.3f)" % np.median(aupr_rnd))
+		## set format
+		plt.xscale('log')
+		plt.xlabel('recall'); plt.ylabel('precision')
+		plt.xlim(0,1); plt.ylim(0,1)
+		leg = plt.legend()
+		leg.get_frame().set_edgecolor('k')
+		plt.savefig(figname, fmt='pdf')
+	return results
 
 
 def cal_sens_n_spec(y, y_pred):
@@ -564,10 +642,16 @@ def prepare_datasets_w_optimzed_labels(file_cc, opt_labels):
 	return cc, labels, features, common_orfs
 
 
-def prepare_datasets_w_de_labels(file_cc, file_label):
+def prepare_datasets_w_de_labels(file_cc, file_label, label_type, p_cutoff=.1):
 	## parse labels of orfs
 	cc, features = parse_cc_matrix(file_cc)
-	orfs, lfcs = parse_de_matrix(file_label)
+	if label_type == "logfc":
+		orfs, labels = parse_de_matrix(file_label)
+		labels = np.absolute(labels)
+	else:
+		orfs, labels = parse_de_matrix(file_label, False)
+		labels[labels > p_cutoff] = -1
+		labels[labels >= 0] = 1
 
 	## find common orfs (samples) for feature ranking
 	cc_out = []
@@ -579,10 +663,10 @@ def prepare_datasets_w_de_labels(file_cc, file_label):
 		else:
 			cc_out.append([0.]*len(features))
 	cc_out = np.array(cc_out, dtype=float)
-	return cc_out, np.absolute(lfcs), features, orfs
+	return cc_out, labels, features, orfs
 
 
-def parse_de_matrix(file, p_cutoff=1., label_bound=15, output_lfc=False):
+def parse_de_matrix(file, output_lfc=False, p_cutoff=1., label_bound=15):
 	## load data
 	data = np.loadtxt(file, dtype=str, delimiter='\t')
 	orfs = data[:,0]
@@ -654,7 +738,7 @@ def combine_samples(D, n_feat):
 	return D
 
 
-def process_data_collection(files_cc, file_labels, valid_sample_names, label_type):
+def process_data_collection(files_cc, file_labels, valid_sample_names, label_type, flag_comb_samples=True, p_cutoff=.1):
 	data_collection = {}
 	for file_cc in files_cc: ## remove wildtype samples
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
@@ -664,20 +748,24 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
 			elif label_type == "continuous":
 				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
-				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label)
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "logfc")
+			elif label_type == "conti2categ":
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "pval", p_cutoff)
 			else:
 				sys.exit("No label type given!")
 			data_collection[sn] = {'cc_data': cc_data, 
 									'labels': labels,
 									'orfs': orfs}
 	## combine samples
-	data_collection = combine_samples(data_collection, len(cc_features))
+	if flag_comb_samples:
+		data_collection = combine_samples(data_collection, len(cc_features))
 	return data_collection, cc_features
 
 
 def query_data_collection(data_collection, query_sample_name, cc_features, feature_prefix=None):
 	## make query
-	print '\n... working on %s\n' % query_sample_name
+	print '-----------------------------\n... working on %s\n' % query_sample_name
 	labels = data_collection[query_sample_name]['labels']
 	cc_data = data_collection[query_sample_name]['cc_data']
 	orfs = data_collection[query_sample_name]['orfs']

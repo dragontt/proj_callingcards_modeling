@@ -18,13 +18,13 @@ python fit_model.py -m holdout_feature_classification -t highest_peaks -c ../out
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("-m","--ranking_method", 
+    parser.add_argument("-m","--method", 
     					help="choose from ['holdout_feature_classification', 'holdout_feature_regression', 'tree_rank_highest_peaks', 'sequential_forward_selection', 'sequential_backward_selection', 'tree_rank_linked_peaks']")
     parser.add_argument("-t","--feature_type", 
     					help="choose from ['highest_peaks', 'binned_promoter']")
     parser.add_argument("-c","--cc_dir")
-    parser.add_argument("-l","--optimized_labels")
     parser.add_argument("-d","--de_dir")
+    parser.add_argument("-l","--optimized_labels")
     parser.add_argument("-o","--output_fig_filename")
     parsed = parser.parse_args(argv[1:])
     return parsed
@@ -45,7 +45,7 @@ def main(argv):
 		sys.exit("Require the label directory: optimized subset file or DE folder!") 
 
 
-	if parsed.ranking_method == "holdout_feature_classification":
+	if parsed.method == "holdout_feature_classification":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
@@ -73,7 +73,7 @@ def main(argv):
 								'_'.join([parsed.output_fig_filename, sample_name]), "rel_prob_DE")
 
 
-	elif parsed.ranking_method == "holdout_feature_regression":
+	elif parsed.method == "holdout_feature_regression":
 		## parse input 
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
@@ -114,7 +114,7 @@ def main(argv):
 			print "-------------------------------------"
 	
 
-	elif parsed.ranking_method == "tree_rank_highest_peaks":
+	elif parsed.method == "tree_rank_highest_peaks":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
@@ -130,7 +130,7 @@ def main(argv):
 		rank_highest_peaks_features(cc_data, labels, cc_features, sample_name)
 
 
-	elif parsed.ranking_method == "tree_rank_linked_peaks":
+	elif parsed.method == "tree_rank_linked_peaks":
 		cc = {}
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix.linked_peaks.json")
 		for file_cc in files_cc: ## remove wildtype samples
@@ -184,7 +184,7 @@ def main(argv):
 			iteration += 1 ## build next tree
 
 
-	elif parsed.ranking_method in ['sequential_forward_selection', 'sequential_backward_selection']:
+	elif parsed.method in ['sequential_forward_selection', 'sequential_backward_selection']:
 		## run feature selection on each sample
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		for file_cc in files_cc: ## remove wildtype samples
@@ -223,37 +223,95 @@ def main(argv):
 			## rank features
 			if parsed.feature_type == "binned_promoter":
 				indx_focus = range(0,cc_data.shape[1],2)
-				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method)
 				indx_focus = [i+1 for i in indx_focus]
-				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method)
 
 				print "5-fold corss-validation"
 				indx_focus = range(0,cc_data.shape[1],2)
-				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method, cv=5)
 				indx_focus = [i+1 for i in indx_focus]
-				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.ranking_method, cv=5)
+				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method, cv=5)
 
 			else:
-				sequential_rank_features(cc_features, cc_data, labels, method=parsed.ranking_method, verbose=True)
+				sequential_rank_features(cc_features, cc_data, labels, method=parsed.method, verbose=True)
 				print "10-fold cross-validation"
-				sequential_rank_features(cc_features, cc_data, labels, method=parsed.ranking_method, cv=10, verbose=True)
+				sequential_rank_features(cc_features, cc_data, labels, method=parsed.method, cv=10, verbose=True)
 
 
-	elif parsed.ranking_method == "simple_precision_recall":
+	elif parsed.method == "simple_precision_recall":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type)
 		## query samples
-		for sample_name in ['combined-all']:
-		# for sample_name in sorted(data_collection.keys()):
-			for feature_filtering_prefix in ["tph_total", "rph_total", "logrph_total"]:
+		compiled_results = np.empty((5,0))
+		# for sample_name in ['combined-all']: #["combined-plusLys", "combined-minusLys"]: 
+		for sample_name in sorted(data_collection.keys()):
+			for feature_filtering_prefix in ["logrph_total"]:
+			# for feature_filtering_prefix in ["tph_total", "rph_total", "logrph_total"]:
 				labels, cc_data, _ = query_data_collection(data_collection,
 															sample_name, cc_features, 
 															feature_filtering_prefix)
 				## plot precision-recall with randomly permuted signals
-				figname = '../output/PR_'+ feature_filtering_prefix.split('_')[0] +'.'+ sample_name +'.pdf'
-				plot_precision_recall_w_random_signal(cc_data, labels, figname)
+				# figname = '../output/PR_'+ feature_filtering_prefix.split('_')[0] +'.'+ sample_name +'.pdf'
+				figname = None
+				results = plot_precision_recall_w_random_signal(cc_data, labels, 0.1, figname)
+				compiled_results = np.hstack((compiled_results, np.array(results).reshape(-1,1)))
+		compiled_results = np.vstack((np.array(sorted(data_collection.keys()))[np.newaxis], compiled_results))
+		np.savetxt('../output2/tmp.txt', compiled_results, fmt="%s", delimiter='\t')
+
+
+	elif parsed.method == "single_feature_learning":
+		## parse input
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		label_type = "conti2categ"
+		data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type, False, 0.1)
+		## query samples
+		# classifier = "RandomForestClassifier"
+		classifier = "GradientBoostingClassifier"
+		compiled_results = np.empty((10,0))
+		for sample_name in sorted(data_collection):
+			feature_filtering_prefix = "logrph_total"
+			labels, cc_data, _ = query_data_collection(data_collection, sample_name, 
+														cc_features, feature_filtering_prefix)
+			## use single feature to train and predict
+			results = model_interactive_feature(cc_data, labels, classifier)
+			compiled_results = np.hstack((compiled_results, np.array(results).reshape(-1,1)))
+		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, fmt="%s", delimiter='\t')
+
+
+	elif parsed.method == "interactive_feature_learning":
+		## parse input
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		label_type = "conti2categ"
+		data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type, False)
+		## query samples
+		# classifier = "RandomForestClassifier"
+		classifier = "GradientBoostingClassifier"
+		compiled_results = np.empty((20,0))
+		paired_samples = []
+		for sample_name in sorted(data_collection):
+			compiled_results_col = []
+			for other_sample in data_collection.keys():
+				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
+					print "$$$%s" % ",".join([sample_name, other_sample])
+					feature_filtering_prefix = "logrph_total"
+					labels, cc_data0, _ = query_data_collection(data_collection, sample_name,
+														cc_features, feature_filtering_prefix)
+					_, cc_data1, _ = query_data_collection(data_collection, other_sample,
+														cc_features, feature_filtering_prefix)
+					cc_data = np.hstack((cc_data0, cc_data1))
+					## use single feature to train and predict
+					results = model_interactive_feature(cc_data, labels, classifier)
+					compiled_results_col += results
+			compiled_results = np.hstack((compiled_results, 
+											np.array(compiled_results_col).reshape(-1,1)))
+		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
+					fmt="%s", delimiter='\t')
+
 
 	else:
 		sys.exit("Wrong ranking method!")
