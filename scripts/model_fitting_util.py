@@ -3,6 +3,7 @@ import os
 import sys
 import numpy as np
 import yaml
+import copy
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
@@ -57,7 +58,7 @@ def sequential_rank_features(features, X, y, method, cv=0, verbose=False):
 
 	##
 	estimator.fit(X, y)
-	print features, ":", estimator.feature_importances_
+	print(features, ":", estimator.feature_importances_)
 	sys.stdout.write("best combination (ACC: %.3f): %s\n" % (model.k_score_, ", ".join(["".join([best_features[i]]) for i in range(len(best_features))])))
 	
 	## print output of each selection iteration
@@ -71,10 +72,10 @@ def rank_linked_tree_features(X, y, features, orfs, sample_name, iteration):
 	## use decision tree to classify orfs
 	model = DecisionTreeClassifier(class_weight=None, max_depth=len(features))
 	model.fit(X, y)
-	print "Feature importance:"
+	print("Feature importance:")
 	for i in range(len(features)):
-		print "\t%s %.3f" % (features[i], model.feature_importances_[i])
-	print "Model accuracy: %.1f%%" % (model.score(X, y)*100)
+		print("\t%s %.3f" % (features[i], model.feature_importances_[i]))
+	print("Model accuracy: %.1f%%" % (model.score(X, y)*100))
 
 	## save tree object for visualization
 	filename = "".join(['../output/tree_', sample_name, '_iter', str(iteration+1),'.dot'])
@@ -96,10 +97,10 @@ def rank_highest_peaks_features(X, y, features, sample_name):
 	## use decision tree to classify orfs
 	model = DecisionTreeClassifier(class_weight=None, min_samples_leaf=3)
 	model.fit(X, y)
-	print "Feature importance:"
+	print("Feature importance:")
 	for i in range(len(features)):
-		print "\t%s %.3f" % (features[i], model.feature_importances_[i])
-	print "Model accuracy: %.1f%%" % (model.score(X, y)*100)
+		print("\t%s %.3f" % (features[i], model.feature_importances_[i]))
+	print("Model accuracy: %.1f%%" % (model.score(X, y)*100))
 
 	## save tree object for visualization
 	filename = "".join(['../output/tree_', sample_name, '.dot'])
@@ -137,13 +138,13 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 			scores_test["spec"].append(spec_te)
 			scores_test["prDE"] += list(model.predict_proba(X[test])[:,1])
 			if verbose:
-				print "... cv fold %d" % k 
-				print "   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te)
+				print("... cv fold %d" % k)
+				print("   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te))
 				# pred_probs = model.predict_proba(X[test])
 				# pred_class = model.predict(X[test])
 				# for i in range(X[test].shape[0]):
-				# 	print "   ", y[test][i], pred_probs[i,:], pred_class[i]
-				# print "  ", np.unique(y[test], return_counts=True)
+				# 	print("   ", y[test][i], pred_probs[i,:], pred_class[i])
+				# print("  ", np.unique(y[test], return_counts=True))
 
 			for i in range(len(features)): 
 				X_teho = X[test]
@@ -180,7 +181,7 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 					scores_holdout["spec"][features[i]] = [spec_ho]
 					scores_holdout["prDE"][features[i]] = prDE_ho
 				# if verbose:
-				# 	print "   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho))
+				# 	print("   %s\t%.3f\t%.3f\t%.3f" % (features[i], np.min(accu_ho), np.median(accu_ho), np.max(accu_ho)))
 	
 	else:
 		## define K folds for CV
@@ -206,7 +207,7 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 			scores_test["var_exp"].append(var_exp)
 			scores_test["lfc"] += list(y_pred)
 
-		print "R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_train), np.min(scores_train), np.median(scores_train))
+		print("R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_train), np.min(scores_train), np.median(scores_train)))
 
 		## TODO: add feature variation
 
@@ -224,7 +225,7 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			## hyperparameter opitimization
 			use_BO = True
 			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
-			print hyparam
+			print(hyparam)
 		else:
 			hyparam = {"n_estimators": 20, 
 						"max_depth": 3, 
@@ -240,7 +241,7 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			## hyperparameter opitimization
 			use_BO = True
 			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
-			print hyparam
+			print(hyparam)
 		else:
 			hyparam = {"n_estimators": 20, 
 						"learning_rate": 0.05, 
@@ -516,12 +517,18 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
 		y_pred_prob = np.append(y_pred_prob, model.predict_proba(X_tr[cv_te])[:,de_class_indx])
 		for i in range(num_rnd_permu):
-			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(np.random.permutation(X_tr[cv_te]))[:,de_class_indx]) ## randomly permute each column
+			## only permute the last column
+			rnd_X_tr_cv_te = copy.deepcopy(X_tr[cv_te]) 
+			col_permu = rnd_X_tr_cv_te.shape[1]-1
+			rnd_X_tr_cv_te[:,col_permu] = np.random.permutation(rnd_X_tr_cv_te[:,col_permu])
+			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
+			## randomly permute each column
+			# y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(X_tr[cv_te])[:,de_class_indx]) 
 	## calculate AUPRs
 	aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
 	aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
-	print "\nCV AUPR = %.3f" % aupr_pred
-	print "CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	print("\nCV AUPR = %.3f" % aupr_pred)
+	print("CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3]))
 	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
 
 	## model trained with full training set
@@ -535,8 +542,8 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 	## calculate AUPRs
 	aupr_pred = average_precision_score(y_te, y_pred_prob)
 	aupr_rnd = sorted([average_precision_score(y_te, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
-	print "\nTesting AUPR = %.3f" % aupr_pred
-	print "Testing Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	print("\nTesting AUPR = %.3f" % aupr_pred)
+	print("Testing Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3]))
 	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]	
 
 	## TODO: return model trained with full training set and X_te, y_te
@@ -571,7 +578,7 @@ def plot_precision_recall_w_random_signal(cc_data, labels, DE_p_thld, figname):
 	num_rnd_permu = 80
 	## true signals
 	precision, recall, aupr = calculate_precision_recall(cc_data, labels, DE_p_thld)
-	print "AUPR = %.3f" % aupr
+	print("AUPR = %.3f" % aupr)
 	## randomly permute signals
 	precision_rnd = []
 	recall_rnd = []
@@ -589,7 +596,7 @@ def plot_precision_recall_w_random_signal(cc_data, labels, DE_p_thld, figname):
 		tmp_re = recall_rnd[i]
 		precision_rnd[i] = np.append(np.array([tmp_pr[0]]*(max_length-len(tmp_pr))), tmp_pr)
 		recall_rnd[i] = np.append(np.array([tmp_re[0]]*(max_length-len(tmp_re))), tmp_re)
-	print "Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	print("Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3]))
 	results = [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr]
 
 	## make plot
@@ -637,6 +644,7 @@ def prepare_datasets_w_optimzed_labels(file_cc, opt_labels):
 	indx_cc = [np.where(cc[:,0] == orf)[0][0] for orf in common_orfs]
 	indx_labels = [np.where(labels[:,0] == orf)[0][0] for orf in common_orfs]
 	cc = np.array(cc[indx_cc, 1:], dtype=float)
+	cc[np.isnan(cc)] = 0
 	labels = np.array(labels[indx_labels, 1], dtype=int)
 
 	return cc, labels, features, common_orfs
@@ -663,6 +671,7 @@ def prepare_datasets_w_de_labels(file_cc, file_label, label_type, p_cutoff=.1):
 		else:
 			cc_out.append([0.]*len(features))
 	cc_out = np.array(cc_out, dtype=float)
+	cc_out[np.isnan(cc_out)] = 0
 	return cc_out, labels, features, orfs
 
 
@@ -743,7 +752,7 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 	for file_cc in files_cc: ## remove wildtype samples
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
 		if (sn in valid_sample_names) and (not sn.startswith('BY4741')):
-			print '... loading %s' % sn
+			print('... loading %s' % sn)
 			if label_type == "categorical":
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
 			elif label_type == "continuous":
@@ -765,13 +774,19 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 
 def query_data_collection(data_collection, query_sample_name, cc_features, feature_prefix=None):
 	## make query
-	print '-----------------------------\n... working on %s\n' % query_sample_name
+	print('-----------------------------\n... working on %s\n' % query_sample_name)
 	labels = data_collection[query_sample_name]['labels']
 	cc_data = data_collection[query_sample_name]['cc_data']
 	orfs = data_collection[query_sample_name]['orfs']
 	## filter features by prefix
 	if feature_prefix:
-		indx = [i for i in range(len(cc_features)) if cc_features[i].startswith(feature_prefix)]
+		if type(feature_prefix) is str:
+			fp = feature_prefix
+			indx = [i for i in range(len(cc_features)) if cc_features[i].startswith(fp)]
+		elif type(feature_prefix) is list:
+			indx = []
+			for fp in feature_prefix:
+				indx += [i for i in range(len(cc_features)) if cc_features[i].startswith(fp)]
 		cc_features = cc_features[indx]
 		cc_data = cc_data[:,indx]
 	return (labels, cc_data, cc_features)
@@ -783,7 +798,7 @@ def calculate_chance(labels, verbose=True):
 	total_labels = float(len(labels))
 	chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
 	if verbose:
-		print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
+		print('Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance))
 	return chance
 
 
@@ -810,7 +825,7 @@ def rank_features_RFE(features, X, y, estimator_type, cv=False):
 	model = model.fit(scale(X),y)
 	indx = np.argsort(model.ranking_)
 	## print feature ranking results
-	print 'Bound not DE', len(y[y==-1]), '| Bound and DE', len(y[y==1])
+	print('Bound not DE', len(y[y==-1]), '| Bound and DE', len(y[y==1]))
 	for i in indx:
 		X_neg = X[y==-1, i]
 		X_pos = X[y==1, i]
