@@ -96,6 +96,8 @@ def rank_linked_tree_features(X, y, features, orfs, sample_name, iteration):
 def rank_highest_peaks_features(X, y, features, sample_name):
 	## use decision tree to classify orfs
 	model = DecisionTreeClassifier(class_weight=None, min_samples_leaf=3)
+	scaler = StandardScaler().fit(X)
+	X = scaler.transform(X)
 	model.fit(X, y)
 	print("Feature importance:")
 	for i in range(len(features)):
@@ -126,36 +128,40 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 
 		## perform CV
 		for k, (train, test) in enumerate(k_fold.split(X, y)):
-			## construct model 
-			model = construct_classification_model(X[train], y[train], algorithm, opt_param)
+			## preprocessing data 
+			cv_scaler = StandardScaler().fit(X[train])
+			X_tr = cv_scaler.transform(X[train])
+			X_te = cv_scaler.transform(X[test])
+			## construct model
+			model = construct_classification_model(X_tr, y[train], algorithm, opt_param)
 			## train the model
-			model.fit(X[train], y[train]) 
+			model.fit(X_tr, y[train]) 
 			## test without varying feature
-			accu_te = model.score(X[test], y[test])
-			sens_te, spec_te = cal_sens_n_spec(y[test], model.predict(X[test])) 
+			accu_te = model.score(X_te, y[test])
+			sens_te, spec_te = cal_sens_n_spec(y[test], model.predict(X_te)) 
 			scores_test["accu"].append(accu_te)
 			scores_test["sens"].append(sens_te)
 			scores_test["spec"].append(spec_te)
-			scores_test["prDE"] += list(model.predict_proba(X[test])[:,1])
+			scores_test["prDE"] += list(model.predict_proba(X_te)[:,1])
 			if verbose:
 				print("... cv fold %d" % k)
 				print("   accu: %.3f\tsens: %.3f\tspec %.3f" % (accu_te, sens_te, spec_te))
-				# pred_probs = model.predict_proba(X[test])
-				# pred_class = model.predict(X[test])
-				# for i in range(X[test].shape[0]):
+				# pred_probs = model.predict_proba(X_te)
+				# pred_class = model.predict(X_te)
+				# for i in range(X_te.shape[0]):
 				# 	print("   ", y[test][i], pred_probs[i,:], pred_class[i])
 				# print("  ", np.unique(y[test], return_counts=True))
 
 			for i in range(len(features)): 
-				X_teho = X[test]
+				X_teho = X_te
 				## vary the value of holdout feature
 				# f_max = max(X[:,i])
 				f_max = max(X[:,i]) if features[i].endswith("Dist") else np.percentile(X[:,i], 95)
 				f_min = min(X[:,i])
 				step = (f_max-f_min)/float(num_step) 
-				feature_values = np.arange(f_min, f_max+step, step)
-				# step = (np.percentile(X[:,i], 97.5)-np.percentile(X[:,i], 2.5))/float(num_step)
-				# feature_values = np.arange(np.percentile(X[:,i], 2.5), np.percentile(X[:,i], 97.5), step) 
+				feature_values = np.arange(f_min, f_max+step, step) 
+				feature_values = (feature_values - cv_scaler.mean_[i]) / cv_scaler.scale_[i]
+
 				accu_ho = []
 				sens_ho = []
 				spec_ho = []
@@ -175,7 +181,7 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 					scores_holdout["spec"][features[i]].append(spec_ho)
 					scores_holdout["prDE"][features[i]] = np.vstack((scores_holdout["prDE"][features[i]], prDE_ho))
 				except KeyError:
-					features_var[features[i]] = feature_values
+					features_var[features[i]] = (feature_values * cv_scaler.scale_[i]) + cv_scaler.mean_[i] ## inversely transform back to original scale 
 					scores_holdout["accu"][features[i]] = [accu_ho]
 					scores_holdout["sens"][features[i]] = [sens_ho]
 					scores_holdout["spec"][features[i]] = [spec_ho]
@@ -193,14 +199,18 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 		## perform CV
 		scores_train = []
 		for k, (train, test) in enumerate(k_fold.split(X, y)):
+			## preprocessing data
+			cv_scaler = StandardScaler().fit(X[train])
+			X_tr = cv_scaler.transform(X[train])
+			X_te = cv_scaler.transform(X[test])
 			## construct model 
-			model = construct_regression_model(X[train], y[train], algorithm)
+			model = construct_regression_model(X_tr, y[train], algorithm)
 			## train the model
-			model.fit(X[train], y[train])
-			scores_train.append(model.score(X[train], y[train]))
+			model.fit(X_tr, y[train])
+			scores_train.append(model.score(X_tr, y[train]))
 			## test without varying feature
-			# rsq = model.score(X[test], y[test])
-			y_pred = model.predict(X[test])
+			# rsq = model.score(X_te, y[test])
+			y_pred = model.predict(X_te)
 			rsq = r2_score(y[test], y_pred)
 			var_exp = explained_variance_score(y[test], y_pred)
 			scores_test["rsq"].append(rsq)
@@ -508,22 +518,26 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 	k_fold = StratifiedKFold(num_fold, shuffle=True, random_state=1)
 	sys.stderr.write("... cv: ") 
 	for k, (cv_tr, cv_te) in enumerate(k_fold.split(X_tr, y_tr)):
+		## preprocessing data
+		cv_scaler = StandardScaler().fit(X_tr[cv_tr])
+		X_cv_tr = cv_scaler.transform(X_tr[cv_tr])
+		X_cv_te = cv_scaler.transform(X_tr[cv_te])
 		## construct model
 		sys.stderr.write("%d " % k) 
-		model = construct_classification_model(X_tr[cv_tr], y_tr[cv_tr], algorithm, opt_param)
-		model.fit(X_tr[cv_tr], y_tr[cv_tr]) 
+		model = construct_classification_model(X_cv_tr, y_tr[cv_tr], algorithm, opt_param)
+		model.fit(X_cv_tr, y_tr[cv_tr]) 
 		## internal validation 
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
-		y_pred_prob = np.append(y_pred_prob, model.predict_proba(X_tr[cv_te])[:,de_class_indx])
+		y_pred_prob = np.append(y_pred_prob, model.predict_proba(X_cv_te)[:,de_class_indx])
 		for i in range(num_rnd_permu):
 			## only permute the last column
-			rnd_X_tr_cv_te = copy.deepcopy(X_tr[cv_te]) 
+			rnd_X_tr_cv_te = copy.deepcopy(X_cv_te) 
 			col_permu = rnd_X_tr_cv_te.shape[1]-1
 			rnd_X_tr_cv_te[:,col_permu] = np.random.permutation(rnd_X_tr_cv_te[:,col_permu])
 			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
 			## randomly permute each column
-			# y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(X_tr[cv_te])[:,de_class_indx]) 
+			# y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(X_cv_te)[:,de_class_indx]) 
 	## calculate AUPRs
 	aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
 	aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
@@ -531,6 +545,10 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 	print("CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3]))
 	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
 
+	## preprocessing data
+	scaler = StandardScaler().fit(X_tr)
+	X_tr = cv_scaler.transform(X_tr)
+	X_te = cv_scaler.transform(X_te)
 	## model trained with full training set
 	model = construct_classification_model(X_tr, y_tr, algorithm, opt_param)
 	model.fit(X_tr, y_tr) 

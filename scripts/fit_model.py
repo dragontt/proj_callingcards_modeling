@@ -269,8 +269,6 @@ def main(argv):
 			feature_filtering_prefix = "logrph_total"
 			labels, cc_data, _ = query_data_collection(data_collection, sample_name, 
 														cc_features, feature_filtering_prefix)
-			print labels
-			sys.exit()
 			## use single feature to train and predict
 			results = model_interactive_feature(cc_data, labels, classifier)
 			compiled_results = np.hstack((compiled_results, np.array(results).reshape(-1,1)))
@@ -284,8 +282,8 @@ def main(argv):
 		data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
 		## query samples
-		classifier = "RandomForestClassifier"
-		# classifier = "GradientBoostingClassifier"
+		# classifier = "RandomForestClassifier"
+		classifier = "GradientBoostingClassifier"
 		compiled_results = np.empty((20,0))
 		paired_samples = []
 		for sample_name in sorted(data_collection):
