@@ -50,11 +50,14 @@ def main(argv):
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		feature_filtering_prefix = "logrph" if parsed.feature_type == "binned_promoter" else None
-		data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
-												valid_sample_names, label_type)
+		# data_collection, cc_features = process_data_collection(files_cc, optimized_labels,
+		# 										valid_sample_names, label_type)
+		label_type = "conti2categ"
+		data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type, True, 0.1)
 		## query samples
-		for sample_name in ['combined-all']:
-		# for sample_name in sorted(data_collection.keys()):
+		# for sample_name in ['combined-all']:
+		for sample_name in sorted(data_collection.keys()):
 			labels, cc_data, cc_features = query_data_collection(data_collection, sample_name, 
 												cc_features, feature_filtering_prefix)
 			## print label information
@@ -262,11 +265,12 @@ def main(argv):
 		data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False, 0.1)
 		## query samples
-		# classifier = "RandomForestClassifier"
-		classifier = "GradientBoostingClassifier"
+		classifier = "RandomForestClassifier"
+		# classifier = "GradientBoostingClassifier"
+		feature_filtering_prefix = "logrph_total"
+
 		compiled_results = np.empty((10,0))
 		for sample_name in sorted(data_collection):
-			feature_filtering_prefix = "logrph_total"
 			labels, cc_data, _ = query_data_collection(data_collection, sample_name, 
 														cc_features, feature_filtering_prefix)
 			## use single feature to train and predict
@@ -282,8 +286,10 @@ def main(argv):
 		data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
 		## query samples
-		# classifier = "RandomForestClassifier"
-		classifier = "GradientBoostingClassifier"
+		classifier = "RandomForestClassifier"
+		# classifier = "GradientBoostingClassifier"
+		feature_filtering_prefix = "logrph_total"
+
 		compiled_results = np.empty((20,0))
 		paired_samples = []
 		for sample_name in sorted(data_collection):
@@ -291,7 +297,6 @@ def main(argv):
 			for other_sample in data_collection.keys():
 				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
 					print("$$$%s" % ",".join([sample_name, other_sample]))
-					feature_filtering_prefix = "logrph_total"
 					labels, cc_data0, _ = query_data_collection(data_collection, sample_name,
 														cc_features, feature_filtering_prefix)
 					_, cc_data1, _ = query_data_collection(data_collection, other_sample,
@@ -316,23 +321,22 @@ def main(argv):
 		bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
 												valid_sample_names, label_type, False)
 		## query samples
-		# classifier = "RandomForestClassifier"
-		classifier = "GradientBoostingClassifier"
-		compiled_results = np.empty((20,0))
+		classifier = "RandomForestClassifier"
+		# classifier = "GradientBoostingClassifier"
+		cc_feature_filtering_predix = "logrph_total"
+		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
+		
+		compiled_results = np.empty((30,0))
 		for sample_name in sorted(cc_data_collection):
 			compiled_results_col = []
-			cc_feature_filtering_predix = "logrph_total"
-			bp_feature_filtering_prefix = ["sum_score", "count"]
 			for i in range(len(bp_feature_filtering_prefix)):
+			# for i in [len(bp_feature_filtering_prefix)-1]:
 				labels, cc_data, _ = query_data_collection(cc_data_collection, sample_name,
 												cc_features, cc_feature_filtering_predix)
 				_, bp_data, _ = query_data_collection(bp_data_collection, sample_name,
 												bp_features, bp_feature_filtering_prefix[:(i+1)])
 				ccbp_data = np.hstack((cc_data, bp_data))
-				# print cc_data.shape
-				# print bp_feature_filtering_prefix[:(i+1)]
-				# print bp_data.shape
-				# print ccbp_data.shape
+				print ccbp_data.shape
 				## use binding potential feature to train and predict
 				results = model_interactive_feature(ccbp_data, labels, classifier)
 				compiled_results_col += results
@@ -340,6 +344,53 @@ def main(argv):
 											np.array(compiled_results_col).reshape(-1,1)))
 		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
 					fmt="%s", delimiter='\t')
+
+
+	elif parsed.method == "interactive_tf_bp_feature_learning":
+		## parse input
+		label_type = "conti2categ"
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type, False)
+		files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
+												valid_sample_names, label_type, False)
+		## query samples
+		classifier = "RandomForestClassifier"
+		# classifier = "GradientBoostingClassifier"
+		cc_feature_filtering_predix = "logrph_total"
+		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
+		
+		compiled_results = np.empty((60,0))
+		for sample_name in sorted(cc_data_collection):
+			compiled_results_col = []
+			for other_sample in cc_data_collection.keys():
+				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
+					print("$$$%s" % ",".join([sample_name, other_sample]))
+					for i in range(len(bp_feature_filtering_prefix)):
+					# for i in [len(bp_feature_filtering_prefix)-1]:
+						labels, cc_data0, _ = query_data_collection(cc_data_collection, 
+															sample_name, cc_features,
+															cc_feature_filtering_predix)
+						_, cc_data1, _ = query_data_collection(cc_data_collection, 
+															other_sample, cc_features, 
+															feature_filtering_prefix)
+						_, bp_data0, _ = query_data_collection(bp_data_collection, 
+														sample_name, bp_features, 
+														bp_feature_filtering_prefix[:(i+1)])
+						_, bp_data1, _ = query_data_collection(bp_data_collection, 
+														other_sample, bp_features, 
+														bp_feature_filtering_prefix[:(i+1)])
+						ccbp_data = np.concatenate((cc_data0, cc_data1, bp_data0, bp_data1),axis=1)
+						print ccbp_data.shape
+						## use binding potential feature to train and predict
+						results = model_interactive_feature(ccbp_data, labels, classifier)
+						compiled_results_col += results
+					compiled_results = np.hstack((compiled_results, 
+											np.array(compiled_results_col).reshape(-1,1)))
+		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
+					fmt="%s", delimiter='\t')
+
 
 	else:
 		sys.exit("Wrong ranking method!")
