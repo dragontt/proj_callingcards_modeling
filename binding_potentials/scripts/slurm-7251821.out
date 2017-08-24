@@ -1,0 +1,223 @@
+*** Processing YBL103C ... 1
+Using motif +YBL103C of width 8.
+Using motif -YBL103C of width 8.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YBL103C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5327
+processed targets
+*** Done
+*** Processing YBR033W ... 2
+Using motif +YBR033W of width 7.
+Using motif -YBR033W of width 7.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.922063
+options set:
+  input file: ../output//YBR033W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 6237
+processed targets
+*** Done
+*** Processing YDL116W ... 3
+*** No motif exists
+*** Processing YDR034C ... 4
+Using motif +YDR034C of width 9.
+Using motif -YDR034C of width 9.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.969839
+options set:
+  input file: ../output//YDR034C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5751
+processed targets
+*** Done
+*** Processing YDR123C ... 5
+Using motif +YDR123C of width 8.
+Using motif -YDR123C of width 8.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YDR123C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5131
+processed targets
+*** Done
+*** Processing YDR174W ... 6
+*** No motif exists
+*** Processing YFR034C ... 7
+Using motif +YFR034C of width 8.
+Using motif -YFR034C of width 8.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YFR034C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 4679
+processed targets
+*** Done
+*** Processing YHL020C ... 8
+Using motif +YHL020C of width 10.
+Using motif -YHL020C of width 10.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YHL020C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5206
+processed targets
+*** Done
+*** Processing YIL036W ... 9
+Using motif +YIL036W of width 6.
+Using motif -YIL036W of width 6.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.967429
+options set:
+  input file: ../output//YIL036W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5506
+processed targets
+*** Done
+*** Processing YJL056C ... 10
+Using motif +YJL056C of width 14.
+Using motif -YJL056C of width 14.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.9582
+options set:
+  input file: ../output//YJL056C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5475
+processed targets
+*** Done
+*** Processing YKL038W ... 11
+Using motif +YKL038W of width 10.
+Using motif -YKL038W of width 10.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.993505
+options set:
+  input file: ../output//YKL038W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 6012
+processed targets
+*** Done
+*** Processing YLR403W ... 12
+Using motif +YLR403W of width 12.
+Using motif -YLR403W of width 12.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.790796
+options set:
+  input file: ../output//YLR403W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5858
+processed targets
+*** Done
+*** Processing YOL067C ... 13
+Using motif +YOL067C of width 12.
+Using motif -YOL067C of width 12.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YOL067C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5522
+processed targets
+*** Done
+*** Processing YOL108C ... 14
+Using motif +YOL108C of width 11.
+Using motif -YOL108C of width 11.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=0.986127
+options set:
+  input file: ../output//YOL108C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5979
+processed targets
+*** Done
+*** Processing YOR032C ... 15
+Using motif +YOR032C of width 10.
+Using motif -YOR032C of width 10.
+Computing q-values.
+Estimating pi_0 from a uniformly sampled set of 10000 p-values.
+Estimating pi_0.
+Estimated pi_0=1
+options set:
+  input file: ../output//YOR032C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5128
+processed targets
+*** Done
+*** Processing YBR033W ... 16
+The output directory '../output//YBR033W' already exists.
+Its contents will not be overwritten.
+FATAL: Couldn't create output directory ../output//YBR033W.
+
+options set:
+  input file: ../output//YBR033W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 6237
+processed targets
+*** Done
+*** Processing YKL038W ... 17
+The output directory '../output//YKL038W' already exists.
+Its contents will not be overwritten.
+FATAL: Couldn't create output directory ../output//YKL038W.
+
+options set:
+  input file: ../output//YKL038W/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 6012
+processed targets
+*** Done
+*** Processing YDR034C ... 18
+The output directory '../output//YDR034C' already exists.
+Its contents will not be overwritten.
+FATAL: Couldn't create output directory ../output//YDR034C.
+
+options set:
+  input file: ../output//YDR034C/temp.txt
+  pval cutoff: 1
+read file in
+number of targets: 5751
+processed targets
+*** Done
+*** ALL DONE! ***

@@ -45,7 +45,7 @@ def calculate_hit_dist(genes, fimo_dict):
 				dist_mtx[i,0] = min(pdists)
 
 			ds = [0] + ds
-			d_diffs = [ds[i+1]-ds[i] for i in range(len(ds)-1)]
+			d_diffs = [ds[j+1]-ds[j] for j in range(len(ds)-1)]
 			dist_mtx[i,1:min(4,len(d_diffs)+1)] = d_diffs[:min(3,len(d_diffs))]
 	return dist_mtx
 
