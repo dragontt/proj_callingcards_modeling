@@ -33,12 +33,15 @@ def sequential_rank_features(features, X, y, method, cv=0, verbose=False):
 	## use feature selection algorithms to rank features
 	# estimator = LogisticRegression(fit_intercept=False,
 	# 								class_weight='balanced')
-	estimator = RandomForestClassifier(n_estimators=20, 
-										max_depth=None,
-										min_samples_leaf=1,
+	hyparam = {"n_estimators": 20, 
+				"max_depth": 3, 
+				"min_samples_leaf": 5}
+	estimator = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
+										max_depth=hyparam["max_depth"],
+										min_samples_leaf=hyparam["min_samples_leaf"],
 										class_weight="balanced")
 	flag_forward = (method == "sequential_forward_selection")
-	model = SFS(estimator=estimator, k_features=(1,len(features)), forward=flag_forward, floating=True, scoring="accuracy", cv=cv)
+	model = SFS(estimator=estimator, k_features=(1,len(features)), forward=flag_forward, floating=True, scoring="average_precision", cv=cv, n_jobs=cv)
 	pipe = make_pipeline(StandardScaler(), model)
 	pipe.fit(X, y)
 
@@ -767,9 +770,9 @@ def combine_samples(D, n_feat):
 
 def process_data_collection(files_cc, file_labels, valid_sample_names, label_type, flag_comb_samples=True, p_cutoff=.1):
 	data_collection = {}
-	for file_cc in files_cc: ## remove wildtype samples
+	for file_cc in files_cc: 
 		sn = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
-		if (sn in valid_sample_names) and (not sn.startswith('BY4741')):
+		if (sn in valid_sample_names) and (not sn.startswith('BY4741')):## exclude WT samples
 			print('... loading %s' % sn)
 			if label_type == "categorical":
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
