@@ -93,7 +93,7 @@ def main(argv):
 													cc_features, feature_filtering_prefix)
 
 			## print label information: dummy regressor? -> average lfc 
-			print("Dummy regressor:", calculate_dummy_regression_score(cc_data, labels))
+			print "Dummy regressor:", calculate_dummy_regression_score(cc_data, labels)
 
 			## model the holdout feature
 			# regressor = "RidgeRegressor"
@@ -108,10 +108,10 @@ def main(argv):
 			rsq_hist = np.histogram(scores_test['rsq'])
 			var_exp_hist = np.histogram(scores_test['var_exp'])
 			lfc_hist = np.histogram(scores_test['lfc'])
-			print("-------------------------------------")
-			print("R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['rsq']), np.min(scores_test['rsq']), np.median(scores_test['rsq'])))
-			print("Var explained: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['var_exp']), np.min(scores_test['var_exp']), np.median(scores_test['var_exp'])))
-			print("-------------------------------------")
+			print "-------------------------------------"
+			print "R-squared: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['rsq']), np.min(scores_test['rsq']), np.median(scores_test['rsq']))
+			print "Var explained: (max) %.3f, (min) %.3f, (median) %.3f" % (np.max(scores_test['var_exp']), np.min(scores_test['var_exp']), np.median(scores_test['var_exp']))
+			print "-------------------------------------"
 	
 
 	elif parsed.method == "tree_rank_highest_peaks":
@@ -136,16 +136,16 @@ def main(argv):
 		for file_cc in files_cc: ## remove wildtype samples
 			sample_name = os.path.splitext(os.path.basename(file_cc))[0].split(".")[0]
 			if (sample_name in valid_sample_names) and (not sample_name.startswith('BY4741')):
-				print('... loading %s' % sample_name)
+				print '... loading %s' % sample_name
 				cc[sample_name] = parse_cc_json(file_cc)
 
 		iteration = 0 ## track peak iteration
 		focused_orfs = None
 		while True:
-			print('\n***** Iteration %d *****' % (iteration+1))
+			print '\n***** Iteration %d *****' % (iteration+1)
 			data_collection = {}
 			for sample_name in cc.keys():
-				print('... working on %s' % sample_name)
+				print '... working on %s' % sample_name
 				cc_data, labels, cc_features, orfs = prepare_subset_w_optimized_labels(\
 										cc[sample_name], optimized_labels[sample_name],
 										sample_name, iteration, focused_orfs)
@@ -158,13 +158,13 @@ def main(argv):
 			data_collection = combine_samples(data_collection, len(cc_features))
 			# sample_names = ['combined-plusLys', 'combined-minusLys', 'combined-all']:
 			sample_name = 'combined-all'
-			print('\n... working on %s\n' % sample_name)
+			print '\n... working on %s\n' % sample_name
 			labels = data_collection[sample_name]['labels']
 			cc_data = data_collection[sample_name]['cc_data']
 			orfs = data_collection[sample_name]['orfs']
 
 			if len(labels) == 0:
-				print("DONE: No more next highest peak to work on.\n")
+				print "DONE: No more next highest peak to work on.\n"
 				break
 
 			## print label information
@@ -172,13 +172,13 @@ def main(argv):
 			pos_labels = len(labels[labels==1])
 			total_labels = float(len(labels))
 			chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
-			print('Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance))
+			print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
 			focused_orfs = rank_linked_tree_features(cc_data, labels, cc_features, orfs,
 													sample_name, iteration)
-			print('# of misclassified targets / total targets = %d / %d\n' % (len(focused_orfs), len(orfs)))
+			print '# of misclassified targets / total targets = %d / %d\n' % (len(focused_orfs), len(orfs))
 
 			if len(focused_orfs) == 0: ##no more misclassified orfs or no next peak in any orf
-				print("DONE:No more misclassified targets.\n")
+				print "DONE:No more misclassified targets.\n"
 				break
 
 			iteration += 1 ## build next tree
@@ -195,7 +195,7 @@ def main(argv):
 		data_collection = {}
 		for file_cc in files_cc:
 			sample_name = os.path.basename(file_cc).split(".")[0]
-			print('... working on %s' % sample_name)
+			print '... working on %s' % sample_name
 
 			## parse calling cards and DE data
 			cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, optimized_labels[sample_name])
@@ -208,7 +208,7 @@ def main(argv):
 		## combine samples
 		data_collection = combine_samples(data_collection, len(cc_features))
 		for sample in ['combined-all']:
-			print('\n... working on %s\n' % sample)
+			print '\n... working on %s\n' % sample
 			labels = data_collection[sample]['labels']
 			cc_data = data_collection[sample]['cc_data']
 			orfs = data_collection[sample_name]['orfs']
@@ -218,7 +218,7 @@ def main(argv):
 			pos_labels = len(labels[labels==1])
 			total_labels = float(len(labels))
 			chance = (pos_labels/total_labels*pos_labels + neg_labels/total_labels*neg_labels)/ total_labels
-			print('Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance))
+			print 'Bound not DE %d | Bound and DE %d | chance ACC: %.3f' % (neg_labels, pos_labels,chance)
 
 			## rank features
 			if parsed.feature_type == "binned_promoter":
@@ -227,7 +227,7 @@ def main(argv):
 				indx_focus = [i+1 for i in indx_focus]
 				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method)
 
-				print("5-fold corss-validation")
+				print "5-fold corss-validation"
 				indx_focus = range(0,cc_data.shape[1],2)
 				sequential_rank_features(cc_features[indx_focus], cc_data[:,indx_focus], labels, method=parsed.method, cv=5)
 				indx_focus = [i+1 for i in indx_focus]
@@ -235,7 +235,7 @@ def main(argv):
 
 			else:
 				sequential_rank_features(cc_features, cc_data, labels, method=parsed.method, verbose=True)
-				print("10-fold cross-validation")
+				print "10-fold cross-validation"
 				sequential_rank_features(cc_features, cc_data, labels, method=parsed.method, cv=10, verbose=True)
 
 
@@ -300,7 +300,7 @@ def main(argv):
 			compiled_results_col = []
 			for other_sample in data_collection.keys():
 				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-					print("$$$%s" % ",".join([sample_name, other_sample]))
+					print "$$$%s" % ",".join([sample_name, other_sample])
 					labels, cc_data0, _ = query_data_collection(data_collection, sample_name,
 														cc_features, feature_filtering_prefix)
 					_, cc_data1, _ = query_data_collection(data_collection, other_sample,
@@ -399,7 +399,7 @@ def main(argv):
 			compiled_results_col = []
 			for other_sample in cc_data_collection.keys():
 				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-					print("$$$%s" % ",".join([sample_name, other_sample]))
+					print "$$$%s" % ",".join([sample_name, other_sample])
 					# for i in range(len(bp_feature_filtering_prefix)):
 					for i in [len(bp_feature_filtering_prefix)-1]:
 						labels, cc_data0, _ = query_data_collection(cc_data_collection, 
@@ -433,58 +433,64 @@ def main(argv):
 					fmt="%s", delimiter='\t')
 
 
-	elif parsed.method == "interactive_tf_bp_feature_ranking":
+	elif parsed.method == "interactive_bp_feature_ranking":
 		## parse input
 		label_type = "conti2categ"
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
-		files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
+		if parsed.bp_dir:
+			files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ 
+									parsed.feature_type +".txt")
+			bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
 												valid_sample_names, label_type, False)
-		ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], 
-																	"pval", 0.1)
+		if parsed.file_ca:
+			ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
+		if parsed.wt_dir:
+			files_wt = glob.glob(parsed.wt_dir +"/*.WT_median.expr")
+			wt_data_collection, wt_features = process_data_collection(files_wt, files_de,
+												valid_sample_names, label_type, False)
 		## query samples
 		classifier = "RandomForestClassifier"
 		# classifier = "GradientBoostingClassifier"
 		cc_feature_filtering_prefix = "logrph_total"
 		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
 		
-		# compiled_results = np.empty((60,0))
+		ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1','H3K4me3_prom_-1',
+										'H3K79me_prom_-1','H4K16ac_prom_-1','H3K27ac_body',
+										'H3K36me3_body','H3K4me3_body','H3K79me_body',
+										'H4K16ac_body']
+		
 		for sample_name in sorted(cc_data_collection):
-			# compiled_results_col = []
-			for other_sample in cc_data_collection.keys():
-				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-					print("$$$%s" % ",".join([sample_name, other_sample]))
-					labels, cc_data0, cc_feature0 = query_data_collection(cc_data_collection, 
-														sample_name, cc_features,
-														cc_feature_filtering_prefix)
-					_, cc_data1, cc_feature1 = query_data_collection(cc_data_collection, 
-														other_sample, cc_features, 
-														cc_feature_filtering_prefix)
-					_, bp_data0, bp_feature0 = query_data_collection(bp_data_collection, 
-													sample_name, bp_features, 
-													bp_feature_filtering_prefix)
-					_, bp_data1, bp_feature1 = query_data_collection(bp_data_collection, 
-													other_sample, bp_features, 
-													bp_feature_filtering_prefix)
-					combined_data = np.concatenate((cc_data0, cc_data1, bp_data0, bp_data1), axis=1)
-					combined_data = np.concatenate((combined_data, ca_data), axis=1)
-					cc_feature0 = ['TF0.'+cc_feature0[kk] for kk in range(len(cc_feature0))]
-					cc_feature1 = ['TF1.'+cc_feature1[kk] for kk in range(len(cc_feature1))]
-					bp_feature0 = ['TF0.'+bp_feature0[kk] for kk in range(len(bp_feature0))]
-					bp_feature1 = ['TF1.'+bp_feature1[kk] for kk in range(len(bp_feature1))]
-					all_features = cc_feature0 + cc_feature1 + bp_feature0 + bp_feature1
-					all_features += list(ca_features)
-					## use binding potential feature to train and predict
-					combined_data_tr, combined_data_te, labels_tr, labels_te = train_test_split(combined_data, labels, test_size=1./10, random_state=1)
-					print combined_data_tr.shape, labels_tr.shape
-					sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_forward_selection", 10, True)
-		# 			compiled_results_col += results
-		# 	compiled_results = np.hstack((compiled_results, 
-		# 								np.array(compiled_results_col).reshape(-1,1)))
-		# np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
-		# 			fmt="%s", delimiter='\t')
+			compiled_results_col = []
+			labels, cc_data, cc_features0 = query_data_collection(cc_data_collection, 
+																sample_name, cc_features, 
+																cc_feature_filtering_prefix)
+			combined_data = cc_data
+			all_features = list(cc_features0)
+			if parsed.bp_dir:	
+				_, bp_data, bp_features0 = query_data_collection(bp_data_collection, sample_name,
+										bp_features, bp_feature_filtering_prefix)
+				combined_data = np.concatenate((combined_data, bp_data),axis=1)
+				all_features += list(bp_features0)
+			if parsed.file_ca:
+				ca_feat_indx = [k for k in range(len(ca_features)) if ca_features[k] in ca_feature_filtering_prefix]
+				combined_data = np.concatenate((combined_data, ca_data[:,ca_feat_indx]), axis=1)
+				all_features += list(ca_features[ca_feat_indx])
+			if parsed.wt_dir:
+				_, wt_data, wt_features0 = query_data_collection(wt_data_collection, 
+											sample_name, wt_features)
+				combined_data = np.concatenate((combined_data, wt_data), axis=1)
+				all_features += list(wt_features0)
+			print combined_data.shape, len(all_features)
+			print all_features
+			
+			## use binding potential feature to train and predict
+			combined_data_tr, combined_data_te, labels_tr, labels_te = train_test_split(combined_data, labels, test_size=1./10, random_state=1)
+			print combined_data_tr.shape, labels_tr.shape
+			sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_forward_selection", 10, True)
+
+
 
 
 	else:

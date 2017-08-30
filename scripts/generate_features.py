@@ -81,7 +81,7 @@ def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, bkgd
 		orf = orfs[i]
 		orf_counter += 1
 		if orf_counter % 1000 == 0:
-			print("Analyzing "+str(orf_counter)+"th orf")
+			print "Analyzing "+str(orf_counter)+"th orf"
 		## assign normalized experiment hops and reads to bins
 		for j, row in expt.loc[expt["Orf"] == orf].iterrows():
 			expt_dist = row["Dist"]
@@ -313,7 +313,7 @@ def main(argv):
 			files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
 			for file_in in files_experiment:
 				file_in_basename = os.path.basename(file_in).split(".")[0]
-				print("... working on", file_in_basename)
+				print "... working on", file_in_basename
 				experiment = load_orf_hops(file_in)
 				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range, experiment)
 				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
@@ -331,7 +331,7 @@ def main(argv):
 			files_experiment.remove(parsed.file_background)
 			for file_in in files_experiment:
 				file_in_basename = os.path.basename(file_in).split(".")[0]
-				print("... working on", file_in_basename)
+				print "... working on", file_in_basename
 				experiment_totals = totals_dict[file_in_basename]
 				experiment = load_orf_hops(file_in)
 				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range,
@@ -345,7 +345,7 @@ def main(argv):
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print("... working on", file_in_basename)
+			print "... working on", file_in_basename
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_matrix = generate_highest_peaks_features(peaks_dataframe, "RPH", 2)
 			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.highest_peaks.txt"
@@ -356,7 +356,7 @@ def main(argv):
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print("... working on", file_in_basename)
+			print "... working on", file_in_basename
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_matrix = generate_num_peaks_features(peaks_dataframe, "RPH")
 			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.num_peaks.txt"
@@ -367,7 +367,7 @@ def main(argv):
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
 			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print("... working on", file_in_basename)
+			print "... working on", file_in_basename
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_dict = generate_linked_peaks_features(peaks_dataframe, "TPH")
 			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.linked_peaks.json"
@@ -378,7 +378,7 @@ def main(argv):
 		for file_in in glob.glob(dir_data+'/*.orf_peaks.'+ parsed.dist_cutoff +'bp'):
 			file_prefix = file_in.strip('orf_peaks.'+ parsed.dist_cutoff +'bp')
 			file_out = file_prefix+'cc_feature_matrix.summarized_orf_peaks.txt'
-			print('... working on', file_prefix.strip('./'))
+			print '... working on', file_prefix.strip('./')
 			## generate calling cards feature matrix from clustered peak data
 			feature_matrix = generate_summarized_peak_features(file_in, promoter_range)
 			write_feature_matrix(file_output, feature_matrix)
