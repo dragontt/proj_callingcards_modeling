@@ -283,38 +283,6 @@ def main(argv):
 		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, fmt="%s", delimiter='\t')
 
 
-	elif parsed.method == "interactive_tf_feature_learning":
-		## parse input
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		label_type = "conti2categ"
-		data_collection, cc_features = process_data_collection(files_cc, files_de,
-												valid_sample_names, label_type, False)
-		## query samples
-		classifier = "RandomForestClassifier"
-		# classifier = "GradientBoostingClassifier"
-		feature_filtering_prefix = "logrph_total"
-
-		compiled_results = np.empty((20,0))
-		paired_samples = []
-		for sample_name in sorted(data_collection):
-			compiled_results_col = []
-			for other_sample in data_collection.keys():
-				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-					print "$$$%s" % ",".join([sample_name, other_sample])
-					labels, cc_data0, _ = query_data_collection(data_collection, sample_name,
-														cc_features, feature_filtering_prefix)
-					_, cc_data1, _ = query_data_collection(data_collection, other_sample,
-														cc_features, feature_filtering_prefix)
-					cc_data = np.hstack((cc_data0, cc_data1))
-					## use interactive feature to train and predict
-					results = model_interactive_feature(cc_data, labels, classifier)
-					compiled_results_col += results
-			compiled_results = np.hstack((compiled_results, 
-											np.array(compiled_results_col).reshape(-1,1)))
-		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
-					fmt="%s", delimiter='\t')
-
-
 	elif parsed.method == "interactive_bp_feature_learning":
 		## parse input
 		label_type = "conti2categ"
@@ -336,6 +304,7 @@ def main(argv):
 		classifier = "RandomForestClassifier"
 		# classifier = "GradientBoostingClassifier"
 		cc_feature_filtering_prefix = "logrph_total"
+		# cc_feature_filtering_prefix = "logrph"
 		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
 		ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1','H3K4me3_prom_-1',
 										'H3K79me_prom_-1','H4K16ac_prom_-1','H3K27ac_body',
@@ -361,76 +330,77 @@ def main(argv):
 					_, wt_data, _ = query_data_collection(wt_data_collection, 
 												sample_name, wt_features)
 					combined_data = np.concatenate((combined_data, wt_data), axis=1)
-				print combined_data.shape
+				print combined_data.shape, "+1:", len(labels[labels ==1]), "-1:", len(labels[labels ==-1])
 				## use binding potential feature to train and predict
-				results = model_interactive_feature(combined_data, labels, classifier)
+				# results = model_interactive_feature(combined_data, labels, classifier)
+				results = model_interactive_feature(combined_data, labels, classifier, 10, True)
 				compiled_results_col += results
 			compiled_results = np.hstack((compiled_results, 
 											np.array(compiled_results_col).reshape(-1,1)))
-		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
+		np.savetxt('../output/tmp.'+classifier+'.cc+ca+wt+bp.txt', compiled_results, 
 					fmt="%s", delimiter='\t')
 
 
-	elif parsed.method == "interactive_tf_bp_feature_learning":
-		## parse input
-		label_type = "conti2categ"
-		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
-												valid_sample_names, label_type, False)
-		if parsed.bp_dir:
-			files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ 
-									parsed.feature_type +".txt")
-			bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
-												valid_sample_names, label_type, False)
-		if parsed.file_ca:
-			ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
-		if parsed.wt_dir:
-			files_wt = glob.glob(parsed.wt_dir +"/*.WT_median.expr")
-			wt_data_collection, wt_features = process_data_collection(files_wt, files_de,
-												valid_sample_names, label_type, False)
-		## query samples
-		classifier = "RandomForestClassifier"
-		# classifier = "GradientBoostingClassifier"
-		cc_feature_filtering_prefix = "logrph_total"
-		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
+	# elif parsed.method == "interactive_tf_bp_feature_learning":
+	# 	## parse input
+	# 	label_type = "conti2categ"
+	# 	files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+	# 	cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
+	# 											valid_sample_names, label_type, False)
+	# 	if parsed.bp_dir:
+	# 		files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ 
+	# 								parsed.feature_type +".txt")
+	# 		bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
+	# 											valid_sample_names, label_type, False)
+	# 	if parsed.file_ca:
+	# 		ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
+	# 	if parsed.wt_dir:
+	# 		files_wt = glob.glob(parsed.wt_dir +"/*.WT_median.expr")
+	# 		wt_data_collection, wt_features = process_data_collection(files_wt, files_de,
+	# 											valid_sample_names, label_type, False)
+	# 	## query samples
+	# 	classifier = "RandomForestClassifier"
+	# 	# classifier = "GradientBoostingClassifier"
+	# 	cc_feature_filtering_prefix = "logrph_total"
+	# 	bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
 		
-		compiled_results = np.empty((20,0))
-		for sample_name in sorted(cc_data_collection):
-			compiled_results_col = []
-			for other_sample in cc_data_collection.keys():
-				if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-					print "$$$%s" % ",".join([sample_name, other_sample])
-					# for i in range(len(bp_feature_filtering_prefix)):
-					for i in [len(bp_feature_filtering_prefix)-1]:
-						labels, cc_data0, _ = query_data_collection(cc_data_collection, 
-															sample_name, cc_features,
-															cc_feature_filtering_prefix)
-						_, cc_data1, _ = query_data_collection(cc_data_collection, 
-															other_sample, cc_features, 
-															cc_feature_filtering_prefix)
-						combined_data = np.concatenate((cc_data0, cc_data1), axis=1)
-						if parsed.bp_dir:
-							_, bp_data0, _ = query_data_collection(bp_data_collection, 
-														sample_name, bp_features, 
-														bp_feature_filtering_prefix[:(i+1)])
-							_, bp_data1, _ = query_data_collection(bp_data_collection, 
-														other_sample, bp_features, 
-														bp_feature_filtering_prefix[:(i+1)])
-							combined_data = np.concatenate((combined_data, bp_data0, bp_data1),axis=1)
-						if parsed.file_ca:
-							combined_data = np.concatenate((combined_data, ca_data), axis=1)
-						if parsed.wt_dir:
-							_, wt_data, _ = query_data_collection(wt_data_collection, 
-														sample_name, wt_features)
-							combined_data = np.concatenate((combined_data, wt_data), axis=1)
-						print combined_data.shape, labels.shape
-						## use binding potential feature to train and predict
-						results = model_interactive_feature(combined_data, labels, classifier)
-						compiled_results_col += results
-			compiled_results = np.hstack((compiled_results, 
-										np.array(compiled_results_col).reshape(-1,1)))
-		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
-					fmt="%s", delimiter='\t')
+	# 	compiled_results = np.empty((20,0))
+	# 	for sample_name in sorted(cc_data_collection):
+	# 		compiled_results_col = []
+	# 		for other_sample in cc_data_collection.keys():
+	# 			if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
+	# 				print "$$$%s" % ",".join([sample_name, other_sample])
+	# 				# for i in range(len(bp_feature_filtering_prefix)):
+	# 				for i in [len(bp_feature_filtering_prefix)-1]:
+	# 					labels, cc_data0, _ = query_data_collection(cc_data_collection, 
+	# 														sample_name, cc_features,
+	# 														cc_feature_filtering_prefix)
+	# 					_, cc_data1, _ = query_data_collection(cc_data_collection, 
+	# 														other_sample, cc_features, 
+	# 														cc_feature_filtering_prefix)
+	# 					combined_data = np.concatenate((cc_data0, cc_data1), axis=1)
+	# 					if parsed.bp_dir:
+	# 						_, bp_data0, _ = query_data_collection(bp_data_collection, 
+	# 													sample_name, bp_features, 
+	# 													bp_feature_filtering_prefix[:(i+1)])
+	# 						_, bp_data1, _ = query_data_collection(bp_data_collection, 
+	# 													other_sample, bp_features, 
+	# 													bp_feature_filtering_prefix[:(i+1)])
+	# 						combined_data = np.concatenate((combined_data, bp_data0, bp_data1),axis=1)
+	# 					if parsed.file_ca:
+	# 						combined_data = np.concatenate((combined_data, ca_data), axis=1)
+	# 					if parsed.wt_dir:
+	# 						_, wt_data, _ = query_data_collection(wt_data_collection, 
+	# 													sample_name, wt_features)
+	# 						combined_data = np.concatenate((combined_data, wt_data), axis=1)
+	# 					print combined_data.shape, labels.shape
+	# 					## use binding potential feature to train and predict
+	# 					results = model_interactive_feature(combined_data, labels, classifier)
+	# 					compiled_results_col += results
+	# 		compiled_results = np.hstack((compiled_results, 
+	# 									np.array(compiled_results_col).reshape(-1,1)))
+	# 	np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
+	# 				fmt="%s", delimiter='\t')
 
 
 	elif parsed.method == "interactive_bp_feature_ranking":
@@ -488,9 +458,8 @@ def main(argv):
 			## use binding potential feature to train and predict
 			combined_data_tr, combined_data_te, labels_tr, labels_te = train_test_split(combined_data, labels, test_size=1./10, random_state=1)
 			print combined_data_tr.shape, labels_tr.shape
-			sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_forward_selection", 10, True)
-
-
+			# sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_forward_selection", 10, True)
+			sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_backward_selection", 10, True)
 
 
 	else:

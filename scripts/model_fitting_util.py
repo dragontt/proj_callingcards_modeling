@@ -325,6 +325,9 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 			hyparam_distr = {"n_estimators": (20,200),
 							"max_depth": (1,20),
 							"min_samples_leaf": (1,20)}
+			# hyparam_distr = {"n_estimators": (20,500),
+			# 				"max_depth": (1,50),
+			# 				"min_samples_leaf": (1,20)}
 			model = BayesianOptimization(rf_cv_score, hyparam_distr, verbose=1)
 			model.maximize(init_points=10, n_iter=25, **gp_params)
 			hyparam = model.res["max"]["max_params"]
@@ -526,7 +529,7 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 		X_cv_tr = cv_scaler.transform(X_tr[cv_tr])
 		X_cv_te = cv_scaler.transform(X_tr[cv_te])
 		## construct model
-		sys.stderr.write("%d " % k) 
+		sys.stderr.write("%d " % k)
 		model = construct_classification_model(X_cv_tr, y_tr[cv_tr], algorithm, opt_param)
 		model.fit(X_cv_tr, y_tr[cv_tr]) 
 		## internal validation 
