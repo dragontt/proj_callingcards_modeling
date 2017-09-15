@@ -33,9 +33,12 @@ def sequential_rank_features(features, X, y, method, cv=0, verbose=False):
 	## use feature selection algorithms to rank features
 	# estimator = LogisticRegression(fit_intercept=False,
 	# 								class_weight='balanced')
-	hyparam = {"n_estimators": 20, 
-				"max_depth": 3, 
-				"min_samples_leaf": 5}
+	# hyparam = {"n_estimators": 20, 
+	# 			"max_depth": 3, 
+	# 			"min_samples_leaf": 5}
+	hyparam = {"n_estimators": 200, 
+				"max_depth": 20, 
+				"min_samples_leaf": 1}
 	estimator = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
 										max_depth=hyparam["max_depth"],
 										min_samples_leaf=hyparam["min_samples_leaf"],
@@ -240,9 +243,12 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
 			print hyparam
 		else:
-			hyparam = {"n_estimators": 20, 
-						"max_depth": 3, 
-						"min_samples_leaf": 5}
+			# hyparam = {"n_estimators": 20, 
+			# 			"max_depth": 3, 
+			# 			"min_samples_leaf": 5}
+			hyparam = {"n_estimators": 200, 
+						"max_depth": 20, 
+						"min_samples_leaf": 1}
 		## build model with desired hyperparameters
 		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
 										max_depth=hyparam["max_depth"],

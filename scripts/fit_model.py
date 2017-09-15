@@ -30,7 +30,7 @@ def parse_args(argv):
     parser.add_argument("-a","--file_ca", help="Chromatin accessibility file")
     parser.add_argument("-w","--wt_dir", help="WT expressions directory")
     parser.add_argument("-l","--optimized_labels")
-    parser.add_argument("-o","--output_fig_filename")
+    parser.add_argument("-o","--output_filename")
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -72,13 +72,13 @@ def main(argv):
 														cc_features, sample_name, classifier, 
 														True, 10, 100, False)
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
-								'_'.join([parsed.output_fig_filename, sample_name]), "accu")
+								'_'.join([parsed.output_filename, sample_name]), "accu")
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
-								'_'.join([parsed.output_fig_filename, sample_name]), "sens_n_spec")
+								'_'.join([parsed.output_filename, sample_name]), "sens_n_spec")
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
-								'_'.join([parsed.output_fig_filename, sample_name]), "prob_DE")
+								'_'.join([parsed.output_filename, sample_name]), "prob_DE")
 			plot_holdout_features(scores_test, scores_holdout, features_var, cc_features, 
-								'_'.join([parsed.output_fig_filename, sample_name]), "rel_prob_DE")
+								'_'.join([parsed.output_filename, sample_name]), "rel_prob_DE")
 
 
 	elif parsed.method == "holdout_feature_regression":
@@ -280,7 +280,7 @@ def main(argv):
 			## use single feature to train and predict
 			results = model_interactive_feature(cc_data, labels, classifier)
 			compiled_results = np.hstack((compiled_results, np.array(results).reshape(-1,1)))
-		np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, fmt="%s", delimiter='\t')
+		np.savetxt(parsed.output_filename, compiled_results, fmt="%s", delimiter='\t')
 
 
 	elif parsed.method == "interactive_bp_feature_learning":
@@ -337,70 +337,101 @@ def main(argv):
 				compiled_results_col += results
 			compiled_results = np.hstack((compiled_results, 
 											np.array(compiled_results_col).reshape(-1,1)))
-		np.savetxt('../output/tmp.'+classifier+'.cc+ca+wt+bp.txt', compiled_results, 
-					fmt="%s", delimiter='\t')
+		np.savetxt(parsed.output_filename, compiled_results, fmt="%s", delimiter='\t')
 
 
-	# elif parsed.method == "interactive_tf_bp_feature_learning":
-	# 	## parse input
-	# 	label_type = "conti2categ"
-	# 	files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-	# 	cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
-	# 											valid_sample_names, label_type, False)
-	# 	if parsed.bp_dir:
-	# 		files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ 
-	# 								parsed.feature_type +".txt")
-	# 		bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
-	# 											valid_sample_names, label_type, False)
-	# 	if parsed.file_ca:
-	# 		ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
-	# 	if parsed.wt_dir:
-	# 		files_wt = glob.glob(parsed.wt_dir +"/*.WT_median.expr")
-	# 		wt_data_collection, wt_features = process_data_collection(files_wt, files_de,
-	# 											valid_sample_names, label_type, False)
-	# 	## query samples
-	# 	classifier = "RandomForestClassifier"
-	# 	# classifier = "GradientBoostingClassifier"
-	# 	cc_feature_filtering_prefix = "logrph_total"
-	# 	bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
+	elif parsed.method == "interactive_bp_feature_holdout_analysis":
+		## parse input
+		label_type = "conti2categ"
+		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
+		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
+												valid_sample_names, label_type, False)
+		if parsed.bp_dir:
+			files_bp = glob.glob(parsed.bp_dir +"/*.cc_feature_matrix."+ 
+									parsed.feature_type +".txt")
+			bp_data_collection, bp_features = process_data_collection(files_bp, files_de,
+												valid_sample_names, label_type, False)
+		if parsed.file_ca:
+			ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
+		if parsed.wt_dir:
+			files_wt = glob.glob(parsed.wt_dir +"/*.WT_median.expr")
+			wt_data_collection, wt_features = process_data_collection(files_wt, files_de,
+												valid_sample_names, label_type, False)
+
+		## query samples
+		classifier = "RandomForestClassifier"
+		# classifier = "GradientBoostingClassifier"
+		cc_feature_filtering_prefix = "logrph_total"
+		# cc_feature_filtering_prefix = "logrph"
+		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
+		ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1','H3K4me3_prom_-1',
+										'H3K79me_prom_-1','H4K16ac_prom_-1','H3K27ac_body',
+										'H3K36me3_body','H3K4me3_body','H3K79me_body',
+										'H4K16ac_body']
 		
-	# 	compiled_results = np.empty((20,0))
-	# 	for sample_name in sorted(cc_data_collection):
-	# 		compiled_results_col = []
-	# 		for other_sample in cc_data_collection.keys():
-	# 			if other_sample.endswith(sample_name.split('-')[1]) and other_sample != sample_name:
-	# 				print "$$$%s" % ",".join([sample_name, other_sample])
-	# 				# for i in range(len(bp_feature_filtering_prefix)):
-	# 				for i in [len(bp_feature_filtering_prefix)-1]:
-	# 					labels, cc_data0, _ = query_data_collection(cc_data_collection, 
-	# 														sample_name, cc_features,
-	# 														cc_feature_filtering_prefix)
-	# 					_, cc_data1, _ = query_data_collection(cc_data_collection, 
-	# 														other_sample, cc_features, 
-	# 														cc_feature_filtering_prefix)
-	# 					combined_data = np.concatenate((cc_data0, cc_data1), axis=1)
-	# 					if parsed.bp_dir:
-	# 						_, bp_data0, _ = query_data_collection(bp_data_collection, 
-	# 													sample_name, bp_features, 
-	# 													bp_feature_filtering_prefix[:(i+1)])
-	# 						_, bp_data1, _ = query_data_collection(bp_data_collection, 
-	# 													other_sample, bp_features, 
-	# 													bp_feature_filtering_prefix[:(i+1)])
-	# 						combined_data = np.concatenate((combined_data, bp_data0, bp_data1),axis=1)
-	# 					if parsed.file_ca:
-	# 						combined_data = np.concatenate((combined_data, ca_data), axis=1)
-	# 					if parsed.wt_dir:
-	# 						_, wt_data, _ = query_data_collection(wt_data_collection, 
-	# 													sample_name, wt_features)
-	# 						combined_data = np.concatenate((combined_data, wt_data), axis=1)
-	# 					print combined_data.shape, labels.shape
-	# 					## use binding potential feature to train and predict
-	# 					results = model_interactive_feature(combined_data, labels, classifier)
-	# 					compiled_results_col += results
-	# 		compiled_results = np.hstack((compiled_results, 
-	# 									np.array(compiled_results_col).reshape(-1,1)))
-	# 	np.savetxt('../output/tmp.'+classifier+'.txt', compiled_results, 
-	# 				fmt="%s", delimiter='\t')
+		for sample_name in sorted(cc_data_collection):
+			# for i in range(len(bp_feature_filtering_prefix)):
+			for i in [len(bp_feature_filtering_prefix)-1]:
+				labels, cc_data, cc_f = query_data_collection(cc_data_collection, sample_name,
+												cc_features, cc_feature_filtering_prefix)
+				combined_data = cc_data
+				combined_feat = cc_f
+				if sample_name in ["YKL038W-minusLys", "YKL038W-plusLys"]:
+					print cc_data
+					print np.max(cc_data), np.min(cc_data), np.median(cc_data), np.percentile(cc_data, 75), np.percentile(cc_data, 25)
+				if parsed.bp_dir:
+					_, bp_data, bp_f = query_data_collection(bp_data_collection, sample_name,
+											bp_features, bp_feature_filtering_prefix[:(i+1)])
+					combined_data = np.concatenate((combined_data, bp_data),axis=1)
+					combined_feat = np.append(combined_feat, bp_f)
+				if parsed.file_ca:
+					ca_feat_indx = [k for k in range(len(ca_features)) if ca_features[k] in ca_feature_filtering_prefix]
+					ca_f = ca_features[ca_feat_indx]
+					combined_data = np.concatenate((combined_data, ca_data[:,ca_feat_indx]), axis=1)
+					combined_feat = np.append(combined_feat, ca_f)
+				if parsed.wt_dir:
+					_, wt_data, wt_f = query_data_collection(wt_data_collection, 
+												sample_name, wt_features)
+					combined_data = np.concatenate((combined_data, wt_data), axis=1)
+					combined_feat = np.append(combined_feat, wt_f)
+				print combined_data.shape, "+1:", len(labels[labels ==1]), "-1:", len(labels[labels ==-1])
+				## use binding potential feature to train and predict
+				from sklearn.model_selection import train_test_split
+				combined_data_tr, _, labels_tr, _ = train_test_split(combined_data, labels, 
+													test_size=1./10, random_state=1)
+
+				# import matplotlib
+				# matplotlib.use('Agg')
+				# import matplotlib.pyplot as plt
+				# import matplotlib.gridspec as gridspec
+				# fig = plt.figure(num=None, figsize=(15, 10), dpi=300)
+				# num_cols = np.ceil(np.sqrt(len(combined_feat)))
+				# num_rows = np.ceil(len(combined_feat)/num_cols)
+				# num_cols = int(num_cols)
+				# num_rows = int(num_rows)
+				# for i in range(num_rows):
+				# 	for j in range(num_cols):
+				# 		k = num_cols*i+j ## feature index
+				# 		if k < len(combined_feat):
+				# 			ax = fig.add_subplot(num_rows, num_cols, k+1)
+				# 			ax.boxplot([combined_data[:,k][labels == -1], 
+				# 						combined_data[:,k][labels == 1]], 0 , '')
+				# 			ax.set_title('%s' % combined_feat[k])
+				# 			ax.set_xticklabels(['not DE', 'DE'])
+				# plt.savefig('../output/boxplot.'+sample_name+'.pdf', format='pdf')
+
+				scores_test, scores_holdout, features_var = model_holdout_feature(
+													combined_data_tr, labels_tr, 
+													combined_feat, sample_name, classifier, 
+													True, 10, 100, False)
+				plot_holdout_features(scores_test, scores_holdout, features_var,combined_feat, 
+							'_'.join([parsed.output_filename, sample_name]), "accu")
+				plot_holdout_features(scores_test, scores_holdout, features_var,combined_feat, 
+							'_'.join([parsed.output_filename, sample_name]), "sens_n_spec")
+				plot_holdout_features(scores_test, scores_holdout, features_var,combined_feat, 
+							'_'.join([parsed.output_filename, sample_name]), "prob_DE")
+				plot_holdout_features(scores_test, scores_holdout, features_var,combined_feat, 
+							'_'.join([parsed.output_filename, sample_name]), "rel_prob_DE")
 
 
 	elif parsed.method == "interactive_bp_feature_ranking":
