@@ -680,16 +680,21 @@ def prepare_datasets_w_optimzed_labels(file_cc, opt_labels):
 	return cc, labels, features, common_orfs
 
 
-def prepare_datasets_w_de_labels(file_cc, file_label, label_type, p_cutoff=.1):
+def prepare_datasets_w_de_labels(file_cc, file_label, label_type, cutoff):
 	## parse labels of orfs
 	cc, features = parse_cc_matrix(file_cc)
 	if label_type == "logfc":
 		orfs, labels = parse_de_matrix(file_label)
 		labels = np.absolute(labels)
-	else:
+	elif label_type == "pval":
 		orfs, labels = parse_de_matrix(file_label, False)
-		labels[labels > p_cutoff] = -1
+		labels[labels > cutoff] = -1
 		labels[labels >= 0] = 1
+	elif label_type == "lfc_ranked":
+		orfs, lfcs = parse_de_matrix(file_label)
+		lfcs = np.absolute(lfcs)
+		labels = np.ones(len(lfcs))
+		labels[lfcs <= sorted(lfcs)[::-1][cutoff]] = -1
 
 	## find common orfs (samples) for feature ranking
 	cc_out = []
@@ -791,6 +796,9 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 			elif label_type == "conti2categ":
 				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "pval", p_cutoff)
+			elif label_type == "conti2top500DE":
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 500)
 			else:
 				sys.exit("No label type given!")
 			data_collection[sn] = {'cc_data': cc_data, 

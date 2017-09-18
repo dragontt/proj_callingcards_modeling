@@ -436,7 +436,8 @@ def main(argv):
 
 	elif parsed.method == "interactive_bp_feature_ranking":
 		## parse input
-		label_type = "conti2categ"
+		label_type = "conti2categ" 
+		## label_type = "conti2top500DE"
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
