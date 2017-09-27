@@ -286,6 +286,7 @@ def main(argv):
 	elif parsed.method == "interactive_bp_feature_learning":
 		## parse input
 		label_type = "conti2categ"
+		# label_type = "conti2top500DE"
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
@@ -332,8 +333,8 @@ def main(argv):
 					combined_data = np.concatenate((combined_data, wt_data), axis=1)
 				print combined_data.shape, "+1:", len(labels[labels ==1]), "-1:", len(labels[labels ==-1])
 				## use binding potential feature to train and predict
-				# results = model_interactive_feature(combined_data, labels, classifier)
-				results = model_interactive_feature(combined_data, labels, classifier, 10, True)
+				results = model_interactive_feature(combined_data, labels, classifier)
+				# results = model_interactive_feature(combined_data, labels, classifier, 10, True)
 				compiled_results_col += results
 			compiled_results = np.hstack((compiled_results, 
 											np.array(compiled_results_col).reshape(-1,1)))
@@ -437,7 +438,6 @@ def main(argv):
 	elif parsed.method == "interactive_bp_feature_ranking":
 		## parse input
 		label_type = "conti2categ" 
-		## label_type = "conti2top500DE"
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
