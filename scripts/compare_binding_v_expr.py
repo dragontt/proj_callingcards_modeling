@@ -59,7 +59,19 @@ def match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_
 		if top > cnt_nonzero_tgts:
 			top = cnt_nonzero_tgts
 			print "WARNING: Non-zero LFC targets <", cutoff, "x total genes!"
-		# print top
+			## update for LEU3: keep postive percentage the same
+			global de_cutoff
+			de_cutoff = float(cnt_nonzero_tgts)/len(data_de)
+			## update for LEU3: keep positive count the same
+			# global de_cutoff
+			# global type_de_cutoff
+			# de_cutoff = float(cnt_nonzero_tgts) # float(cnt_nonzero_tgts)/len(data_de)
+			# type_de_cutoff = "fixed_rank"
+		data_de[:] = -1
+		data_de[indx_sort[:top]] = 1
+	elif type_cutoff == "fixed_rank":
+		indx_sort = np.argsort(data_de)[::-1]
+		top = int(de_cutoff)
 		data_de[:] = -1
 		data_de[indx_sort[:top]] = 1
 	elif type_cutoff == "lfc_cutoff":
@@ -76,6 +88,10 @@ def calculate_auc(file_binding, file_de, cutoff, type_binding, type_de, type_cut
 
 	data_de, data_binding = match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff)
 
+	# out = np.hstack((data_de.reshape(-1,1), data_binding.reshape(-1,1)))
+	# filename = '../output/tmp.Kemmeren_x_5TFs.simple.ChIP.'+file_de.split('/')[2].split('-')[0]+'.txt'
+	# np.savetxt(filename, out, fmt='%s', delimiter='\t')
+
 	auprc = average_precision_score(data_de, data_binding) 
 	auroc = roc_auc_score(data_de, data_binding)
 
@@ -90,18 +106,15 @@ def calculate_auc(file_binding, file_de, cutoff, type_binding, type_de, type_cut
 
 
 def batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu):
-	type_cutoff = "percentage"
-	# type_cutoff = "lfc_cutoff"
-
-	cc_hu = calculate_auc(file_cc, file_hu, de_cutoff, "CC", "microarray", type_cutoff)
-	cc_kemmeren = calculate_auc(file_cc, file_kemmeren, de_cutoff, "CC", "RNAseq", type_cutoff)
-	cc_rnaseq = calculate_auc(file_cc, file_rnaseq, de_cutoff, "CC", "microarray", type_cutoff)
-	cc_zev = calculate_auc(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_cutoff)
-
-	chip_hu = calculate_auc(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_cutoff)
-	chip_kemmeren = calculate_auc(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_cutoff)
-	chip_rnaseq = calculate_auc(file_chip, file_rnaseq, de_cutoff, "ChIP", "RNAseq", type_cutoff)
-	chip_zev = calculate_auc(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_cutoff)
+	cc_zev = calculate_auc(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_de_cutoff)
+	cc_rnaseq = calculate_auc(file_cc, file_rnaseq, de_cutoff, "CC", "microarray", type_de_cutoff)
+	cc_hu = calculate_auc(file_cc, file_hu, de_cutoff, "CC", "microarray", type_de_cutoff)
+	cc_kemmeren = calculate_auc(file_cc, file_kemmeren, de_cutoff, "CC", "RNAseq", type_de_cutoff)
+	
+	chip_zev = calculate_auc(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_de_cutoff)
+	chip_rnaseq = calculate_auc(file_chip, file_rnaseq, de_cutoff, "ChIP", "RNAseq", type_de_cutoff)
+	chip_hu = calculate_auc(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_de_cutoff)
+	chip_kemmeren = calculate_auc(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_de_cutoff)
 	
 	print "\tHu\tKemmeren\tBrent\tMcIssac"
 	print "Calling Card\t%.3f\t%.3f\t%.3f\t%.3f" % (cc_hu[2], cc_kemmeren[2], cc_rnaseq[2], cc_zev[2])
@@ -109,16 +122,6 @@ def batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmere
 	print "PWM"
 	print "Random, median\t%.3f\t%.3f\t%.3f\t%.3f" % (chip_hu[0], chip_kemmeren[0], chip_rnaseq[0], chip_zev[0])
 	print "Random, 97.5%% upper bound\t%.3f\t%.3f\t%.3f\t%.3f" % (chip_hu[1], chip_kemmeren[1], chip_rnaseq[1], chip_zev[1])
-	
-
-	# print "CallingCards-ZEV\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_cutoff)
-	# print "ChIP-ZEV\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_cutoff)
-	# print "CallingCards-RNAseq\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_cc, file_rnaseq, de_cutoff, "CC", "microarray", type_cutoff)
-	# print "ChIP-RNAseq\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_chip, file_rnaseq, de_cutoff, "ChIP", "RNAseq", type_cutoff)
-	# print "CallingCards-Kemmeren\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_cc, file_kemmeren, de_cutoff, "CC", "RNAseq", type_cutoff)
-	# print "ChIP-Kemmeren\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_cutoff)
-	# print "CallingCards-Hu\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_cc, file_hu, de_cutoff, "CC", "microarray", type_cutoff)
-	# print "ChIP-Hu\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % calculate_auc(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_cutoff)
 
 
 def calculate_curve_data(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff="percentage"):
@@ -131,26 +134,30 @@ def calculate_curve_data(file_binding, file_de, cutoff, type_binding, type_de, t
 	return ((pr,re), (fp,tp), (rnd_pr,rnd_re), (rnd_fp,rnd_tp))
 
 
-def batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu):
-	type_cutoff = "percentage"
+def batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu, figname):
 	fig = plt.figure(num=None, figsize=(4.5,4), dpi=300)
-
-	((pr,re), (fp,tp), _, _) = calculate_curve_data(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_cutoff)
-	plt.step(re, pr, color="#414eff", label="McIsaac ZEV - Calling cards")
-	((pr,re), (fp,tp), _, _) = calculate_curve_data(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_cutoff)
-	plt.step(re, pr, color="#ff8d00", label="McIsaac ZEV - Harbison ChIP")
-
-	((pr,re), (fp,tp), _, _) = calculate_curve_data(file_cc, file_kemmeren, de_cutoff, "CC", "microarray", type_cutoff)
-	plt.step(re, pr, color="#414eff", linestyle=":", label="Kemmeren - Calling cards")
-	((pr,re), (fp,tp), (rnd_pr,rnd_re), _) = calculate_curve_data(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_cutoff)
-	plt.step(re, pr, color="#ff8d00", linestyle=":", label="Kemmeren - Harbison ChIP")
-	plt.step(rnd_re, rnd_pr, color="#bababa", linestyle="-", label="Random")
-
-	plt.xlabel("Recall"); plt.ylabel("Precision")
-	plt.ylim([0.0, 1.0]); plt.xlim([-0.01, 1.0])
+	## CC vs ZEV
+	print de_cutoff, type_de_cutoff
+	((pr,re), (fp,tp), _, _) = calculate_curve_data(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_de_cutoff)
+	plt.step(re, pr, color="#ef3e5b", label="Calling cards vs ZEV")
+	## CC vs Kemmeren
+	print de_cutoff, type_de_cutoff
+	((pr,re), (fp,tp), _, _) = calculate_curve_data(file_cc, file_kemmeren, de_cutoff, "CC", "microarray", type_de_cutoff)
+	plt.step(re, pr, color="#95d47a", linestyle="-", label="Calling cards vs Kemmeren")
+	## CC vs Hu
+	print de_cutoff, type_de_cutoff
+	((pr,re), (fp,tp), (rnd_pr,rnd_re), _) = calculate_curve_data(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_de_cutoff)
+	plt.step(re, pr, color="#6f5495", linestyle="-", label="Calling cards vs Hu")
+	## random 
+	plt.step(rnd_re, rnd_pr, color="#c9c9c9", linestyle="-", label="Random")
+	## figure attributes
+	matplotlib.rcParams.update({'font.size': 12})
+	matplotlib.rcParams.update({'font.family': 'DejaVu Sans'})
+	plt.xlabel("Recall", fontsize=14); plt.ylabel("Precision", fontsize=14)
+	plt.ylim([0.0, 1.01]); plt.xlim([0, 1.0])
 	plt.grid(linewidth=.5)
 	plt.legend(loc="best", frameon=True)
-	plt.savefig("../output/RGT1.PR.pdf", format="pdf")
+	plt.savefig(figname, format="pdf")
 
 
 def calculate_direction_of_change(file, usecol=2, lfc_cutoff=.5):
@@ -184,11 +191,13 @@ def batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmere
 
 
 global de_cutoff
+global type_de_cutoff
 de_cutoff = 0.05 ## 5% of top genes as positive class
+type_de_cutoff = "percentage"
 # de_cutoff = .5 ## |LFC| > .5 as positive class
 
 # """
-timepoint = '90min'
+timepoint = '15min'
 print "\nRGT1"
 file_cc = "../CCDataProcessed/NULL_model_results.RGT1-Tagin-Lys_filtered.gnashy"
 file_chip = "../Harbison_ChIP/YKL038W.cc_feature_matrix.binned_promoter.txt"
@@ -244,15 +253,15 @@ file_kemmeren = "../Holstege_DE/YLR403W.DE.tsv"
 file_hu	= "../Hu_DE/YLR403W.DE.tsv"
 batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
 
-print "\nSFP1, CC-62A"
-# file_cc = "../CCDataProcessed/NULL_model_results.SFP1_48A_filtered.gnashy"
-file_cc = "../CCDataProcessed/NULL_model_results.SFP1_62A_filtered.gnashy"
-file_chip = "../Harbison_ChIP/YLR403W.cc_feature_matrix.binned_promoter.txt"
-file_zev = "../McIsaac_ZEV_DE/YLR403W-"+timepoint+".DE.txt"
-file_rnaseq = None
-file_kemmeren = "../Holstege_DE/YLR403W.DE.tsv"
-file_hu	= "../Hu_DE/YLR403W.DE.tsv"
-batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
+# print "\nSFP1, CC-62A"
+# # file_cc = "../CCDataProcessed/NULL_model_results.SFP1_48A_filtered.gnashy"
+# file_cc = "../CCDataProcessed/NULL_model_results.SFP1_62A_filtered.gnashy"
+# file_chip = "../Harbison_ChIP/YLR403W.cc_feature_matrix.binned_promoter.txt"
+# file_zev = "../McIsaac_ZEV_DE/YLR403W-"+timepoint+".DE.txt"
+# file_rnaseq = None
+# file_kemmeren = "../Holstege_DE/YLR403W.DE.tsv"
+# file_hu	= "../Hu_DE/YLR403W.DE.tsv"
+# batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
 
 print "\nOPI1"
 file_cc = "../CCDataProcessed/NULL_model_results.OPI1_51A_filtered.gnashy"
@@ -282,6 +291,16 @@ file_hu	= "../Hu_DE/YLR451W.DE.tsv"
 batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
 # """
 
+"""
+print "\nLEU3"
+file_cc = "../CCDataProcessed/NULL_model_results.Leu3-Tagin-Trp_filtered.gnashy"
+file_chip = "../Harbison_ChIP/YLR451W.cc_feature_matrix.binned_promoter.txt"
+file_zev = "../McIsaac_ZEV_DE/YLR451W-15min.DE.txt"
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YLR451W.DE.tsv"
+file_hu	= "../Hu_DE/YLR451W.DE.tsv"
+batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
+"""
 
 """
 print "\nCBF1-5min"
@@ -340,13 +359,13 @@ batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, f
 """
 
 """
-file_cc = "../CCDataProcessed/NULL_model_results.RGT1-Tagin-Lys_filtered.gnashy"
-file_chip = "../Harbison_ChIP/YKL038W.cc_feature_matrix.binned_promoter.txt"
-file_zev = "../McIsaac_ZEV_DE/YKL038W-15min.match_minusLys.DE.txt"
-file_rnaseq = "../resources/YKL038W-minusLys.DE.tsv"
-file_kemmeren = "../Holstege_DE/YKL038W.DE.tsv"
-file_hu = "../Hu_DE/YKL038W.DE.tsv"
-batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
+file_cc = "../CCDataProcessed/NULL_model_results.Leu3-Tagin-Trp_filtered.gnashy"
+file_chip = "../Harbison_ChIP/YLR451W.cc_feature_matrix.binned_promoter.txt"
+file_zev = "../McIsaac_ZEV_DE/YLR451W-15min.DE.txt"
+file_rnaseq = "../resources/YLR451W.DE.tsv"
+file_kemmeren = "../Holstege_DE/YLR451W.DE.tsv"
+file_hu = "../Hu_DE/YLR451W.DE.tsv"
+batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu, "../output/LEU3.PR.pdf")
 
 """
 

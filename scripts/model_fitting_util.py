@@ -4,6 +4,7 @@ import sys
 import numpy as np
 import yaml
 import copy
+from scipy.stats import rankdata
 
 from sklearn import tree
 from sklearn.preprocessing import scale, StandardScaler
@@ -247,7 +248,7 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			# 			"max_depth": 3, 
 			# 			"min_samples_leaf": 5}
 			hyparam = {"n_estimators": 200, 
-						"max_depth": 20, 
+						"max_depth": 20, ##TODO: change depth
 						"min_samples_leaf": 1}
 		## build model with desired hyperparameters
 		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
@@ -516,17 +517,22 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, feature_nam
 	plt.savefig(''.join([filename,'.',metric,'.pdf']), format='pdf')
 
 
-def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
+def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, opt_param=False):
 	results = []
 	num_rnd_permu = 80
 	## define training, testing split
-	X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=1./num_fold, random_state=1)
+	if split_te_set:
+		X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=1./num_fold, random_state=1)
+		print len(y_tr[y_tr == 1]) / float(len(y_tr)), len(y_te[y_te == 1]) / float(len(y_te))
+	else:
+		X_tr, y_tr = X, y
+	## perform CV
 	y_all_tr = np.empty(0)
 	y_pred_prob = np.empty(0)
 	y_rnd_prob = {}
 	for i in range(num_rnd_permu):
 		y_rnd_prob[i] = np.empty(0)
-	## perform CV
+
 	k_fold = StratifiedKFold(num_fold, shuffle=True, random_state=1)
 	sys.stderr.write("... cv: ") 
 	for k, (cv_tr, cv_te) in enumerate(k_fold.split(X_tr, y_tr)):
@@ -538,45 +544,55 @@ def model_interactive_feature(X, y, algorithm, num_fold=10, opt_param=False):
 		sys.stderr.write("%d " % k)
 		model = construct_classification_model(X_cv_tr, y_tr[cv_tr], algorithm, opt_param)
 		model.fit(X_cv_tr, y_tr[cv_tr]) 
+		## TODO: to be removed
+		de_class_indx = np.where(model.classes_ == 1)[0][0]
+		tr_y_pred_prob = model.predict_proba(X_cv_tr)[:,de_class_indx]
+		print 'training AuPR', average_precision_score(y_tr[cv_tr], tr_y_pred_prob)
 		## internal validation 
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
-		y_pred_prob = np.append(y_pred_prob, model.predict_proba(X_cv_te)[:,de_class_indx])
+		cv_pred_prob = model.predict_proba(X_cv_te)[:,de_class_indx]
+		y_pred_prob = np.append(y_pred_prob, cv_pred_prob)
+		## TODO: changed to rankings of predicted probs
+		# y_pred_prob = np.append(y_pred_prob, rankdata(cv_pred_prob))
+
 		for i in range(num_rnd_permu):
-			## only permute the last column
-			rnd_X_tr_cv_te = copy.deepcopy(X_cv_te) 
-			col_permu = rnd_X_tr_cv_te.shape[1]-1
-			rnd_X_tr_cv_te[:,col_permu] = np.random.permutation(rnd_X_tr_cv_te[:,col_permu])
-			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
 			## randomly permute each column
-			# y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(X_cv_te)[:,de_class_indx]) 
+			rnd_X_tr_cv_te = copy.deepcopy(X_cv_te) 
+			for j in range(rnd_X_tr_cv_te.shape[1]):
+				rnd_X_tr_cv_te[:,j] = np.random.permutation(rnd_X_tr_cv_te[:,j])
+			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
 	## calculate AUPRs
-	aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
-	aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
-	print "\nCV AUPR = %.3f" % aupr_pred
-	print "CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
-	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
+	results = np.hstack((y_all_tr.reshape(-1,1), y_pred_prob.reshape(-1,1)))
 
-	## preprocessing data
-	scaler = StandardScaler().fit(X_tr)
-	X_tr = cv_scaler.transform(X_tr)
-	X_te = cv_scaler.transform(X_te)
-	## model trained with full training set
-	model = construct_classification_model(X_tr, y_tr, algorithm, opt_param)
-	model.fit(X_tr, y_tr) 
-	de_class_indx = np.where(model.classes_ == 1)[0][0]
-	## predict with the leftout testing set
-	y_pred_prob = model.predict_proba(X_te)[:,de_class_indx] ## overwriting
-	for i in range(num_rnd_permu):
-		y_rnd_prob[i] = model.predict_proba(np.random.permutation(X_te))[:,de_class_indx] ## overwriting
-	## calculate AUPRs
-	aupr_pred = average_precision_score(y_te, y_pred_prob)
-	aupr_rnd = sorted([average_precision_score(y_te, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
-	print "\nTesting AUPR = %.3f" % aupr_pred
-	print "Testing Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
-	results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]	
+	# aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
+	# aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
+	# print "\nCV AUPR = %.3f" % aupr_pred
+	# print "CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+	# results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
+	
 
-	## TODO: return model trained with full training set and X_te, y_te
+
+	if split_te_set:
+		## preprocessing data
+		scaler = StandardScaler().fit(X_tr)
+		X_tr = cv_scaler.transform(X_tr)
+		X_te = cv_scaler.transform(X_te)
+		## model trained with full training set
+		model = construct_classification_model(X_tr, y_tr, algorithm, opt_param)
+		model.fit(X_tr, y_tr) 
+		de_class_indx = np.where(model.classes_ == 1)[0][0]
+		## predict the leftout testing set
+		y_pred_prob = model.predict_proba(X_te)[:,de_class_indx] ## overwriting
+		for i in range(num_rnd_permu):
+			y_rnd_prob[i] = model.predict_proba(np.random.permutation(X_te))[:,de_class_indx] ## overwriting
+		## calculate AUPRs
+		aupr_pred = average_precision_score(y_te, y_pred_prob)
+		aupr_rnd = sorted([average_precision_score(y_te, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
+		print "\nTesting AUPR = %.3f" % aupr_pred
+		print "Testing Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
+		results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]	
+
 	return results
 
 
@@ -684,17 +700,18 @@ def prepare_datasets_w_de_labels(file_cc, file_label, label_type, cutoff):
 	## parse labels of orfs
 	cc, features = parse_cc_matrix(file_cc)
 	if label_type == "logfc":
-		orfs, labels = parse_de_matrix(file_label)
+		orfs, labels = parse_de_matrix(file_label, True)
 		labels = np.absolute(labels)
 	elif label_type == "pval":
 		orfs, labels = parse_de_matrix(file_label, False)
 		labels[labels > cutoff] = -1
 		labels[labels >= 0] = 1
 	elif label_type == "lfc_ranked":
-		orfs, lfcs = parse_de_matrix(file_label)
+		orfs, lfcs = parse_de_matrix(file_label, True)
 		lfcs = np.absolute(lfcs)
+		rank_cutoff = min(int(cutoff*len(lfcs)), len(lfcs[lfcs>0])) if cutoff < 1 else cutoff
 		labels = np.ones(len(lfcs))
-		labels[lfcs <= sorted(lfcs)[::-1][cutoff]] = -1
+		labels[lfcs <= sorted(lfcs)[::-1][rank_cutoff]] = -1
 
 	## find common orfs (samples) for feature ranking
 	cc_out = []
@@ -710,11 +727,15 @@ def prepare_datasets_w_de_labels(file_cc, file_label, label_type, cutoff):
 	return cc_out, labels, features, orfs
 
 
-def parse_de_matrix(file, output_lfc=False, p_cutoff=1., label_bound=15):
+def parse_de_matrix(file, output_lfc, p_cutoff=1., label_bound=15):
 	## load data
 	data = np.loadtxt(file, dtype=str, delimiter='\t')
 	orfs = data[:,0]
-	pvals = np.array(data[:,1], dtype=float)
+	try:
+		float(data[0,1])
+		pvals = np.array(data[:,1], dtype=float)
+	except ValueError:
+		pvals = np.ones(len(data[:,1]))
 	lfcs = np.array(data[:,2], dtype=float)
 	## get proper systematic name
 	valid = [i for i in range(len(orfs)) if orfs[i].startswith("Y") and orfs[i].split('-')[0][-1] in ['W','C']] 
@@ -799,6 +820,9 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 			elif label_type == "conti2top500DE":
 				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 500)
+			elif label_type == "conti2top5pct":
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0] == sn][0]] ## find the continuous label file that matches CC file
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 0.05)
 			else:
 				sys.exit("No label type given!")
 			data_collection[sn] = {'cc_data': cc_data, 
