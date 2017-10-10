@@ -29,6 +29,7 @@ def parse_args(argv):
     parser.add_argument("-p","--bp_dir", help="Binding potential directory")
     parser.add_argument("-a","--file_ca", help="Chromatin accessibility file")
     parser.add_argument("-w","--wt_dir", help="WT expressions directory")
+    parser.add_argument("-v","--valid_sample_name", help="TF sample name to focus")
     parser.add_argument("-l","--optimized_labels")
     parser.add_argument("-o","--output_filename")
     parsed = parser.parse_args(argv[1:])
@@ -46,8 +47,11 @@ def main(argv):
 		# files_de = glob.glob(parsed.de_dir +"/*.DE.tsv")
 		# valid_sample_names = [os.path.basename(f).split('.')[0] for f in files_de]
 		files_de = glob.glob(parsed.de_dir +"/*15min.DE.txt")
-		# valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
-		valid_sample_names = ['YDR034C','YJR060W','YKL038W','YLR451W','YOL067C']
+		if parsed.valid_sample_name:
+			valid_sample_names = [parsed.valid_sample_name]
+		else:
+			# valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
+			valid_sample_names = ['YDR034C','YJR060W','YKL038W','YLR451W']
 		label_type = "continuous"
 	else:
 		sys.exit("Require the label directory: optimized subset file or DE folder!") 
@@ -337,8 +341,8 @@ def main(argv):
 					combined_data = np.concatenate((combined_data, wt_data), axis=1)
 				print combined_data.shape, "+1:", len(labels[labels ==1]), "-1:", len(labels[labels ==-1])
 				## use binding potential feature to train and predict
-				# results = model_interactive_feature(combined_data, labels, classifier, False)
-				results = model_interactive_feature(combined_data, labels, classifier, False, 10, True)
+				results = model_interactive_feature(combined_data, labels, classifier, False)
+				# results = model_interactive_feature(combined_data, labels, classifier, False, 10, True)
 				np.savetxt(parsed.output_filename+'.'+sample_name+'.txt', results, fmt='%s', delimiter='\t')
 
 				# results = model_interactive_feature(combined_data, labels, classifier, True, 10, True)
@@ -449,7 +453,8 @@ def main(argv):
 
 	elif parsed.method == "interactive_bp_feature_ranking":
 		## parse input
-		label_type = "conti2categ" 
+		# label_type = "conti2categ" 
+		label_type = "conti2top5pct"
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
 		cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
 												valid_sample_names, label_type, False)
@@ -469,14 +474,12 @@ def main(argv):
 		# classifier = "GradientBoostingClassifier"
 		cc_feature_filtering_prefix = "logrph_total"
 		bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
-		
 		ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1','H3K4me3_prom_-1',
 										'H3K79me_prom_-1','H4K16ac_prom_-1','H3K27ac_body',
 										'H3K36me3_body','H3K4me3_body','H3K79me_body',
 										'H4K16ac_body']
 		
 		for sample_name in sorted(cc_data_collection):
-			compiled_results_col = []
 			labels, cc_data, cc_features0 = query_data_collection(cc_data_collection, 
 																sample_name, cc_features, 
 																cc_feature_filtering_prefix)
@@ -499,11 +502,17 @@ def main(argv):
 			print combined_data.shape, len(all_features)
 			print all_features
 			
-			## use binding potential feature to train and predict
-			combined_data_tr, combined_data_te, labels_tr, labels_te = train_test_split(combined_data, labels, test_size=1./10, random_state=1)
-			print combined_data_tr.shape, labels_tr.shape
+			## use binding feature and histone marks to train and predict
+			# combined_data_tr, combined_data_te, labels_tr, labels_te = train_test_split(combined_data, labels, test_size=1./10, random_state=1)
+			# print combined_data_tr.shape, labels_tr.shape
 			# sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_forward_selection", 10, True)
-			sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_backward_selection", 10, True)
+			# sequential_rank_features(all_features, combined_data_tr, labels_tr, "sequential_backward_selection", 10, True)
+
+			## use full sample set for feature ranking
+			# selection_direction = "sequential_forward_selection"
+			selection_direction = "sequential_backward_selection"
+			sequential_rank_features(all_features, combined_data, labels, 
+									selection_direction, 10, True)
 
 
 

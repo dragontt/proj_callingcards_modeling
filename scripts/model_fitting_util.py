@@ -44,6 +44,7 @@ def sequential_rank_features(features, X, y, method, cv=0, verbose=False):
 										max_depth=hyparam["max_depth"],
 										min_samples_leaf=hyparam["min_samples_leaf"],
 										class_weight="balanced")
+	print method
 	flag_forward = (method == "sequential_forward_selection")
 	model = SFS(estimator=estimator, k_features=(1,len(features)), forward=flag_forward, floating=True, scoring="average_precision", cv=cv, n_jobs=cv)
 	pipe = make_pipeline(StandardScaler(), model)
@@ -536,18 +537,29 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 	k_fold = StratifiedKFold(num_fold, shuffle=True, random_state=1)
 	sys.stderr.write("... cv: ") 
 	for k, (cv_tr, cv_te) in enumerate(k_fold.split(X_tr, y_tr)):
+		X_cv_tr = X_tr[cv_tr]
+		y_cv_tr = y_tr[cv_tr]
+
+		# ## TODO: subsample majority class
+		# indx_pos = np.where(y_cv_tr == 1)[0]
+		# indx_neg = np.where(y_cv_tr == -1)[0]
+		# indx_neg = np.random.choice(indx_neg, size=int(len(indx_pos)*2.5), replace=False)
+		# indx_sampled = np.append(indx_pos, indx_neg)
+		# X_cv_tr = X_cv_tr[indx_sampled,]
+		# y_cv_tr = y_cv_tr[indx_sampled]
+		
 		## preprocessing data
-		cv_scaler = StandardScaler().fit(X_tr[cv_tr])
-		X_cv_tr = cv_scaler.transform(X_tr[cv_tr])
+		cv_scaler = StandardScaler().fit(X_cv_tr)
+		X_cv_tr = cv_scaler.transform(X_cv_tr)
 		X_cv_te = cv_scaler.transform(X_tr[cv_te])
 		## construct model
 		sys.stderr.write("%d " % k)
-		model = construct_classification_model(X_cv_tr, y_tr[cv_tr], algorithm, opt_param)
-		model.fit(X_cv_tr, y_tr[cv_tr]) 
+		model = construct_classification_model(X_cv_tr, y_cv_tr, algorithm, opt_param)
+		model.fit(X_cv_tr, y_cv_tr) 
 		## TODO: to be removed
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		tr_y_pred_prob = model.predict_proba(X_cv_tr)[:,de_class_indx]
-		print 'training AuPR', average_precision_score(y_tr[cv_tr], tr_y_pred_prob)
+		print 'training AuPR', average_precision_score(y_cv_tr, tr_y_pred_prob)
 		## internal validation 
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
@@ -570,8 +582,6 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 	# print "\nCV AUPR = %.3f" % aupr_pred
 	# print "CV Randomized, median AUPR = %.3f, 95%% CI = [%.3f, %.3f]" % (np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3])
 	# results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]
-	
-
 
 	if split_te_set:
 		## preprocessing data
@@ -594,6 +604,7 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 		results += [np.median(aupr_rnd), aupr_rnd[2], aupr_rnd[-3], aupr_rnd[-3]-np.median(aupr_rnd), aupr_pred]	
 
 	return results
+
 
 
 def calculate_precision_recall(X0, y0, DE_p_thld=0.1):

@@ -160,14 +160,18 @@ def batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, f
 	plt.savefig(figname, format="pdf")
 
 
-def calculate_direction_of_change(file, usecol=2, lfc_cutoff=.5):
+def calculate_direction_of_change(file, reverse=False, usecol=2, lfc_cutoff=1):
 	if not file:
 		return (np.nan, np.nan, np.nan, np.nan, np.nan)
 	lfc = np.loadtxt(file, usecols=[usecol])
 	pos_lfc = len(lfc[lfc > lfc_cutoff])
 	neg_lfc = len(lfc[lfc < -1*lfc_cutoff])
-	return (float(pos_lfc)/(pos_lfc+neg_lfc), float(neg_lfc)/(pos_lfc+neg_lfc), 
-			pos_lfc+neg_lfc, pos_lfc, neg_lfc)
+	if reverse:
+		return (float(neg_lfc)/(pos_lfc+neg_lfc), float(pos_lfc)/(pos_lfc+neg_lfc), 
+				pos_lfc+neg_lfc, neg_lfc, pos_lfc)
+	else:
+		return (float(pos_lfc)/(pos_lfc+neg_lfc), float(neg_lfc)/(pos_lfc+neg_lfc), 
+				pos_lfc+neg_lfc, pos_lfc, neg_lfc)
 
 
 def batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu):
@@ -180,10 +184,10 @@ def batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmere
 	rnaseq = calculate_direction_of_change(file_rnaseq)
 	rnaseq = ['RNAseq', tf] + list(rnaseq)
 	results = np.vstack(( results, rnaseq ))
-	kemmeren = calculate_direction_of_change(file_kemmeren)
+	kemmeren = calculate_direction_of_change(file_kemmeren, True)
 	kemmeren = ['Kemmeren', tf] + list(kemmeren)
 	results = np.vstack(( results, kemmeren ))
-	hu = calculate_direction_of_change(file_hu)
+	hu = calculate_direction_of_change(file_hu, True)
 	hu = ['Hu', tf] + list(hu)
 	results = np.vstack(( results, hu ))
 	for i in range(len(results)):
@@ -196,7 +200,7 @@ de_cutoff = 0.05 ## 5% of top genes as positive class
 type_de_cutoff = "percentage"
 # de_cutoff = .5 ## |LFC| > .5 as positive class
 
-# """
+"""
 timepoint = '15min'
 print "\nRGT1"
 file_cc = "../CCDataProcessed/NULL_model_results.RGT1-Tagin-Lys_filtered.gnashy"
@@ -289,7 +293,7 @@ file_rnaseq = None
 file_kemmeren = "../Holstege_DE/YLR451W.DE.tsv"
 file_hu	= "../Hu_DE/YLR451W.DE.tsv"
 batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
-# """
+"""
 
 """
 print "\nLEU3"
@@ -370,7 +374,7 @@ batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_
 """
 
 
-"""
+# """
 tf = "RGT1"
 files_zev = ["../McIsaac_ZEV_DE/YKL038W-10min.match_minusLys.DE.txt",
 			"../McIsaac_ZEV_DE/YKL038W-15min.match_minusLys.DE.txt",
@@ -406,4 +410,49 @@ file_rnaseq = None
 file_kemmeren = "../Holstege_DE/YJR060W.DE.tsv"
 file_hu	= "../Hu_DE/YJR060W.DE.tsv"
 batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
-"""
+
+tf = "LEU3"
+files_zev = ["../McIsaac_ZEV_DE/YLR451W-10min.DE.txt",
+			"../McIsaac_ZEV_DE/YLR451W-15min.DE.txt",
+			"../McIsaac_ZEV_DE/YLR451W-20min.DE.txt"]
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YLR451W.DE.tsv"
+file_hu	= "../Hu_DE/YLR451W.DE.tsv"
+batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
+
+tf = "OPI1"
+files_zev = ["../McIsaac_ZEV_DE/YHL020C-10min.DE.txt",
+			"../McIsaac_ZEV_DE/YHL020C-15min.DE.txt",
+			"../McIsaac_ZEV_DE/YHL020C-20min.DE.txt"]
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YHL020C.DE.tsv"
+file_hu	= "../Hu_DE/YHL020C.DE.tsv"
+batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
+
+tf = "PHO4"
+files_zev = ["../McIsaac_ZEV_DE/YFR034C-10min.DE.txt",
+			"../McIsaac_ZEV_DE/YFR034C-15min.DE.txt",
+			"../McIsaac_ZEV_DE/YFR034C-20min.DE.txt"]
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YFR034C.DE.tsv"
+file_hu	= "../Hu_DE/YFR034C.DE.tsv"
+batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
+
+tf = "SFP1"
+files_zev = ["../McIsaac_ZEV_DE/YLR403W-10min.DE.txt",
+			"../McIsaac_ZEV_DE/YLR403W-15min.DE.txt",
+			"../McIsaac_ZEV_DE/YLR403W-20min.DE.txt"]
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YLR403W.DE.tsv"
+file_hu	= "../Hu_DE/YLR403W.DE.tsv"
+batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
+
+tf = "ZAP1"
+files_zev = ["../McIsaac_ZEV_DE/YJL056C-10min.DE.txt",
+			"../McIsaac_ZEV_DE/YJL056C-15min.DE.txt",
+			"../McIsaac_ZEV_DE/YJL056C-20min.DE.txt"]
+file_rnaseq = None
+file_kemmeren = "../Holstege_DE/YJL056C.DE.tsv"
+file_hu	= "../Hu_DE/YJL056C.DE.tsv"
+batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
+# """

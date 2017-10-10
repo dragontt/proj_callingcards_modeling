@@ -1,8 +1,8 @@
 #!/bin/bash
-#SBATCH --mem-per-cpu=24G
-#SBATCH -n 10
-#SBATCH -o ../log/run_fit_model.ZEV-15min_x_all_TFs.RF.CC+CA.out
-#SBATCH -e ../log/run_fit_model.ZEV-15min_x_all_TFs.RF.CC+CA.err
+#SBATCH --mem-per-cpu=20G
+#SBATCH -n 1
+#SBATCH -o ../log/run_fit_model.bfs.Cbf1.out
+#SBATCH -e ../log/run_fit_model.bfs.Cbf1.err
 #SBATCH -J cc_modeling
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=yiming.kang@wustl.edu
@@ -23,4 +23,8 @@ module load biopython
 
 
 # python fit_model.py -m interactive_bp_feature_learning -t pvals -c ../output3/ -d ../McIsaac_ZEV_DE/ -o ../output/tmp.ZEV-15min_x_5TFs.RF.CC
-python fit_model.py -m interactive_bp_feature_learning -t pvals -c ../output3/ -d ../McIsaac_ZEV_DE/ -a ../chromatin_access/output/chromatin_access_features.txt -o ../output/tmp.ZEV-15min_x_5TFs.RF.CC+CA
+# python fit_model.py -m interactive_bp_feature_learning -t pvals -c ../output3/ -d ../McIsaac_ZEV_DE/ -a ../chromatin_access/output/chromatin_access_features.txt -o ../output/tmp.ZEV-15min_x_5TFs.RF.CC+CA
+
+
+
+python fit_model.py -m interactive_bp_feature_ranking -t pvals -c ../output3/ -a ../chromatin_access/output/chromatin_access_features.txt -d ../McIsaac_ZEV_DE/ -v YJR060W
