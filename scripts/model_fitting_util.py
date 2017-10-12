@@ -847,7 +847,7 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 
 def query_data_collection(data_collection, query_sample_name, cc_features, feature_prefix=None):
 	## make query
-	print '-----------------------------\n... working on %s\n' % query_sample_name
+	# print '... querying %s' % query_sample_name
 	labels = data_collection[query_sample_name]['labels']
 	cc_data = data_collection[query_sample_name]['cc_data']
 	orfs = data_collection[query_sample_name]['orfs']
