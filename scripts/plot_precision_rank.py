@@ -135,7 +135,6 @@ def plot_support_rate2(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip,
 
 def plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename, step=5, bin=60):
 	xpts_zev_cc, rates_zev_cc = cal_support_rates(file_zev_cc, step, bin, True) if os.path.isfile(file_zev_cc) else (range(bin), None)
-	xpts_zev_cc, rates_zev_cc = cal_support_rates(file_zev_cc, step, bin, True) if os.path.isfile(file_zev_cc) else (range(bin), None)
 	xpts_hu_cc, rates_hu_cc = cal_support_rates(file_hu_cc, step, bin, True) if os.path.isfile(file_hu_cc) else (range(bin), None)
 	xpts_kemmeren_cc, rates_kemmeren_cc = cal_support_rates(file_kemmeren_cc, step, bin, True) if os.path.isfile(file_kemmeren_cc) else (range(bin), None)
 	xpts_zev_chip, rates_zev_chip = cal_support_rates(file_zev_chip, step, bin, True) if os.path.isfile(file_zev_chip) else (range(bin), None)
@@ -197,12 +196,12 @@ def plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip,
 	plt.savefig(fig_filename, fmt="pdf")
 
 
+"""
 tf_names = {'YJR060W':'Cbf1',
 			'YLR451W':'Leu3',
 			'YDR034C':'Lys14',
 			'YKL038W':'Rgt1'}
 
-"""
 for sys_name, common_name in tf_names.iteritems():
 	print sys_name, common_name
 	file_simple_cc = "../output/tmp.ZEV-15min_x_5TFs.simple.CC."+ sys_name +".txt"
@@ -212,8 +211,7 @@ for sys_name, common_name in tf_names.iteritems():
 	plot_support_rate1(file_simple_cc, file_rf_cc, file_rf_cc_ca, fig_filename)
 """
 
-# """
-# tf_names = {'YLR451W':'Leu3'}
+"""
 tf_names = {'YJR060W':'Cbf1',
 			'YLR451W':'Leu3',
 			'YDR034C':'Lys14',
@@ -233,7 +231,20 @@ for sys_name, common_name in tf_names.iteritems():
 	file_kemmeren_chip = "../output/tmp.Kemmeren_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
 	fig_filename = "../output/fig_ranking."+ common_name +".pdf"
 	plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename)
-# """
+"""
+
+
+## plot directional DE 
+sys_name, common_name, timepoint = 'YJL056C', 'Zap1', '10min'
+file_zev_cc = "../output/tmp.major_DE_direction.ZEV-"+timepoint+"_x_5TFs.simple.CC."+ sys_name +".txt"
+file_hu_cc = "../output/tmp.major_DE_direction.Hu_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
+file_kemmeren_cc = "../output/tmp.major_DE_direction.Kemmeren_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
+file_zev_chip = "../output/tmp.major_DE_direction.ZEV-"+timepoint+"_x_5TFs.simple.ChIP."+ sys_name +".txt"
+file_hu_chip = "../output/tmp.major_DE_direction.Hu_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
+file_kemmeren_chip = "../output/tmp.major_DE_direction.Kemmeren_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
+fig_filename = "../output/fig_ranking.major_DE_direction."+ common_name +".ZEV_"+timepoint+".pdf"
+# fig_filename = "../output/fig_ranking.minor_DE_direction."+ common_name +".ZEV_"+timepoint+".pdf"
+plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename)
 
 
 def plot_support_rate4(file_tf1, file_tf2, file_tfs, label1, label2, label3, fig_filename, step=20, bin=60):

@@ -21,29 +21,51 @@ def load_chip(file):
 	return chip
 
 
-def load_zev(file):
-	return np.loadtxt(file, dtype=str, usecols=[0,2])
-
-
-def load_microarray(file, use_lfc=False):
-	if use_lfc:
+def load_zev(file, majority_direction=None):
+	if majority_direction is not None:
 		data = np.loadtxt(file, dtype=str, usecols=[0,2])
+		lfc = np.array(data[:,1], dtype=float)
+		indx_pos, indx_neg, indx_zero = np.where(lfc > 0)[0], np.where(lfc < 0)[0], np.where(lfc == 0)[0]
+		print "+:", len(indx_pos), "-:", len(indx_neg), "0:", len(indx_zero), "majority direction given:", majority_direction
+		indx_focus = np.append(indx_pos, indx_zero) if majority_direction == "+" else np.append(indx_neg, indx_zero)
+		return (data[indx_focus,], len(data))
+	else:
+		data = np.loadtxt(file, dtype=str, usecols=[0,2])
+		return (data, len(data))
+
+
+def load_microarray(file, use_lfc=False, reverse=False, majority_direction=None):
+	if use_lfc:
+		if majority_direction is not None:
+			data = np.loadtxt(file, dtype=str, usecols=[0,2])
+			lfc = np.array(data[:,1], dtype=float)
+			if reverse:
+				lfc = -1* lfc
+			indx_pos, indx_neg, indx_zero = np.where(lfc > 0)[0], np.where(lfc < 0)[0], np.where(lfc == 0)[0]
+			print "+:", len(indx_pos), "-:", len(indx_neg), "0:", len(indx_zero), "majority direction given:", majority_direction
+			indx_focus = np.append(indx_pos, indx_zero) if majority_direction == "+" else np.append(indx_neg, indx_zero)
+			return (data[indx_focus,], len(data))
+		else:
+			data = np.loadtxt(file, dtype=str, usecols=[0,2])
 	else:
 		data = np.loadtxt(file, dtype=str, usecols=[0,1])
 		pval = np.array(data[:,1], dtype=float) + 10**-25
 		data[:,1] = np.round(-1*np.log(pval), decimals=8)
-	return data
+	return (data, len(data))
 
 
-def match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff="percentage"):
+def match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff="percentage", majority_direction=None):
 	if type_binding.lower() == "cc":
 		binding = load_cc(file_binding)
 	elif type_binding.lower() == "chip":
 		binding = load_chip(file_binding)
+
 	if type_de.lower() == "zev":
-		de = load_zev(file_de)
-	elif type_de.lower() in ["microarray", "rnaseq"]:
-		de = load_microarray(file_de)
+		de, total_genes = load_zev(file_de, majority_direction)
+	elif type_de.lower() == "microarray":
+		de, total_genes = load_microarray(file_de, True, True, majority_direction)
+	elif type_de.lower() == "rnaseq":
+		de, total_genes = load_microarray(file_de, True, False, majority_direction)
 
 	common_tgts = np.intersect1d(binding[:,0], de[:,0])
 	indx_binding = [np.where(binding[:,0] == common_tgts[i])[0][0] for i in range(len(common_tgts))]
@@ -54,14 +76,14 @@ def match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_
 
 	if type_cutoff == "percentage":
 		indx_sort = np.argsort(data_de)[::-1]
-		top = int(cutoff*len(data_de))
+		top = int(cutoff*total_genes)
 		cnt_nonzero_tgts = len(data_de[data_de != 0])
 		if top > cnt_nonzero_tgts:
 			top = cnt_nonzero_tgts
 			print "WARNING: Non-zero LFC targets <", cutoff, "x total genes!"
 			## update for LEU3: keep postive percentage the same
-			global de_cutoff
-			de_cutoff = float(cnt_nonzero_tgts)/len(data_de)
+			# global de_cutoff
+			# de_cutoff = float(cnt_nonzero_tgts)/len(data_de)
 			## update for LEU3: keep positive count the same
 			# global de_cutoff
 			# global type_de_cutoff
@@ -82,15 +104,16 @@ def match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_
 	return (data_de, data_binding)
 
 
-def calculate_auc(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff="percentage"):
+def calculate_auc(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff, majority_direction, file_out_prefix=None):
 	if (not file_binding) or (not file_de):
 		return (np.nan, np.nan, np.nan, np.nan, np.nan, np.nan)
 
-	data_de, data_binding = match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff)
+	data_de, data_binding = match_binding_de(file_binding, file_de, cutoff, type_binding, type_de, type_cutoff, majority_direction)
 
-	# out = np.hstack((data_de.reshape(-1,1), data_binding.reshape(-1,1)))
-	# filename = '../output/tmp.Kemmeren_x_5TFs.simple.ChIP.'+file_de.split('/')[2].split('-')[0]+'.txt'
-	# np.savetxt(filename, out, fmt='%s', delimiter='\t')
+	if file_out_prefix is not None:
+		out = np.hstack((data_de.reshape(-1,1), data_binding.reshape(-1,1)))
+		file_out = file_out_prefix+'.'+file_de.split('/')[2].split('-')[0]+'.txt'
+		np.savetxt(file_out, out, fmt='%s', delimiter='\t')
 
 	auprc = average_precision_score(data_de, data_binding) 
 	auroc = roc_auc_score(data_de, data_binding)
@@ -105,16 +128,23 @@ def calculate_auc(file_binding, file_de, cutoff, type_binding, type_de, type_cut
 			np.median(auroc_rnd), np.percentile(auroc_rnd, 97.5)-np.median(auroc_rnd), auroc)
 
 
-def batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu):
-	cc_zev = calculate_auc(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_de_cutoff)
-	cc_rnaseq = calculate_auc(file_cc, file_rnaseq, de_cutoff, "CC", "microarray", type_de_cutoff)
-	cc_hu = calculate_auc(file_cc, file_hu, de_cutoff, "CC", "microarray", type_de_cutoff)
-	cc_kemmeren = calculate_auc(file_cc, file_kemmeren, de_cutoff, "CC", "RNAseq", type_de_cutoff)
-	
-	chip_zev = calculate_auc(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_de_cutoff)
-	chip_rnaseq = calculate_auc(file_chip, file_rnaseq, de_cutoff, "ChIP", "RNAseq", type_de_cutoff)
-	chip_hu = calculate_auc(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_de_cutoff)
-	chip_kemmeren = calculate_auc(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_de_cutoff)
+def batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu, majority_direction):
+	print "... working on CC vs ZEV"
+	cc_zev = calculate_auc(file_cc, file_zev, de_cutoff, "CC", "ZEV", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.ZEV-"+timepoint+"_x_5TFs.simple.CC")
+	print "... working on CC vs RNAseq"
+	cc_rnaseq = calculate_auc(file_cc, file_rnaseq, de_cutoff, "CC", "RNAseq", type_de_cutoff, majority_direction, None)
+	print "... working on CC vs Hu"
+	cc_hu = calculate_auc(file_cc, file_hu, de_cutoff, "CC", "microarray", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.Hu_x_5TFs.simple.CC")
+	print "... working on CC vs Kemmeren"
+	cc_kemmeren = calculate_auc(file_cc, file_kemmeren, de_cutoff, "CC", "microarray", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.Kemmeren_x_5TFs.simple.CC")
+	print "... working on ChIP vs ZEV"
+	chip_zev = calculate_auc(file_chip, file_zev, de_cutoff, "ChIP", "ZEV", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.ZEV-"+timepoint+"_x_5TFs.simple.ChIP")
+	print "... working on ChIP vs RNAseq"
+	chip_rnaseq = calculate_auc(file_chip, file_rnaseq, de_cutoff, "ChIP", "RNAseq", type_de_cutoff, majority_direction, None)
+	print "... working on ChIP vs Hu"
+	chip_hu = calculate_auc(file_chip, file_hu, de_cutoff, "ChIP", "microarray", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.Hu_x_5TFs.simple.ChIP")
+	print "... working on ChIP vs Kemmeren"
+	chip_kemmeren = calculate_auc(file_chip, file_kemmeren, de_cutoff, "ChIP", "microarray", type_de_cutoff, majority_direction, "../output/tmp.major_DE_direction.Kemmeren_x_5TFs.simple.ChIP")
 	
 	print "\tHu\tKemmeren\tBrent\tMcIssac"
 	print "Calling Card\t%.3f\t%.3f\t%.3f\t%.3f" % (cc_hu[2], cc_kemmeren[2], cc_rnaseq[2], cc_zev[2])
@@ -295,16 +325,19 @@ file_hu	= "../Hu_DE/YLR451W.DE.tsv"
 batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
 """
 
-"""
-print "\nLEU3"
-file_cc = "../CCDataProcessed/NULL_model_results.Leu3-Tagin-Trp_filtered.gnashy"
-file_chip = "../Harbison_ChIP/YLR451W.cc_feature_matrix.binned_promoter.txt"
-file_zev = "../McIsaac_ZEV_DE/YLR451W-15min.DE.txt"
+# """
+global timepoint
+timepoint = '15min'
+majority_direction = '-'
+print "\nZap1"
+file_cc = "../CCDataProcessed/NULL_model_results.ZAP1_52A_filtered.gnashy"
+file_chip = "../Harbison_ChIP/YJL056C.cc_feature_matrix.binned_promoter.txt"
+file_zev = "../McIsaac_ZEV_DE/YJL056C-"+timepoint+".DE.txt"
 file_rnaseq = None
-file_kemmeren = "../Holstege_DE/YLR451W.DE.tsv"
-file_hu	= "../Hu_DE/YLR451W.DE.tsv"
-batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu)
-"""
+file_kemmeren = "../Holstege_DE/YJL056C.DE.tsv"
+file_hu	= "../Hu_DE/YJL056C.DE.tsv"
+batch_calculate_aucs(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_hu, majority_direction)
+# """
 
 """
 print "\nCBF1-5min"
@@ -374,7 +407,7 @@ batch_plot_curve(file_cc, file_chip, file_zev, file_rnaseq, file_kemmeren, file_
 """
 
 
-# """
+"""
 tf = "RGT1"
 files_zev = ["../McIsaac_ZEV_DE/YKL038W-10min.match_minusLys.DE.txt",
 			"../McIsaac_ZEV_DE/YKL038W-15min.match_minusLys.DE.txt",
@@ -455,4 +488,4 @@ file_rnaseq = None
 file_kemmeren = "../Holstege_DE/YJL056C.DE.tsv"
 file_hu	= "../Hu_DE/YJL056C.DE.tsv"
 batch_calculate_direction_of_change(tf, files_zev, file_rnaseq, file_kemmeren, file_hu)
-# """
+"""
