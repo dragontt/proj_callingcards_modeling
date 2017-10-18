@@ -530,6 +530,7 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 	## perform CV
 	y_all_tr = np.empty(0)
 	y_pred_prob = np.empty(0)
+	combined_auprcs = np.empty(0)
 	y_rnd_prob = {}
 	for i in range(num_rnd_permu):
 		y_rnd_prob[i] = np.empty(0)
@@ -559,12 +560,16 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 		## TODO: to be removed
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		tr_y_pred_prob = model.predict_proba(X_cv_tr)[:,de_class_indx]
-		print 'training AuPR', average_precision_score(y_cv_tr, tr_y_pred_prob)
+		# print 'training AuPRC:', 100*average_precision_score(y_cv_tr, tr_y_pred_prob)
 		## internal validation 
 		de_class_indx = np.where(model.classes_ == 1)[0][0]
 		y_all_tr = np.append(y_all_tr, y_tr[cv_te])
 		cv_pred_prob = model.predict_proba(X_cv_te)[:,de_class_indx]
 		y_pred_prob = np.append(y_pred_prob, cv_pred_prob)
+
+		auprc_te = 100*average_precision_score(y_tr[cv_te], cv_pred_prob)
+		combined_auprcs = np.append(combined_auprcs, auprc_te)
+		print 'validation AuPRC:', auprc_te
 		## TODO: changed to rankings of predicted probs
 		# y_pred_prob = np.append(y_pred_prob, rankdata(cv_pred_prob))
 
@@ -576,6 +581,7 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
 	## calculate AUPRs
 	results = np.hstack((y_all_tr.reshape(-1,1), y_pred_prob.reshape(-1,1)))
+	print '$$ Average AuPRCs: %.2f%%, Overall AuPRC: %.2f%%' % (np.mean(combined_auprcs), 100* average_precision_score(results[:,0], results[:,1]))
 
 	# aupr_pred = average_precision_score(y_all_tr, y_pred_prob)
 	# aupr_rnd = sorted([average_precision_score(y_all_tr, y_rnd_prob[i]) for i in y_rnd_prob.keys()])
