@@ -328,7 +328,8 @@ def main(argv):
 
 			## generate features in binned promoter regions
 			files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
-			files_experiment.remove(parsed.file_background)
+			if parsed.file_background in files_experiment:
+				files_experiment.remove(parsed.file_background)
 			for file_in in files_experiment:
 				file_in_basename = os.path.basename(file_in).split(".")[0]
 				print "... working on", file_in_basename
