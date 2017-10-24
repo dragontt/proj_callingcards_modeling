@@ -39,7 +39,8 @@ def prepare_data(parsed, cc_feature_filtering_prefix="logrph", shuffle_sample=Tr
         if parsed.valid_sample_name:
             valid_sample_names = [parsed.valid_sample_name]
         else:
-            valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
+            #valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
+            valid_sample_names = ['YLR451W', 'YKL038W', 'YDR034C']
         label_type = "continuous"
     else:
         sys.exit("Require the label directory: optimized subset file or DE folder!") 
@@ -81,9 +82,9 @@ def prepare_data(parsed, cc_feature_filtering_prefix="logrph", shuffle_sample=Tr
         else:
             cc_data = cc_data[:,:-1]
         ## only use data with non-zero signals
-        # mask = [np.any(cc_data[k,] != 0) for k in range(cc_data.shape[0])]
+        mask = [np.any(cc_data[k,] != 0) for k in range(cc_data.shape[0])]
         ## TODO: unmask -- use all samples
-        mask = np.arange(cc_data.shape[0])
+        #mask = np.arange(cc_data.shape[0])
 
         ## add histone marks
         if parsed.file_ca is not None:
