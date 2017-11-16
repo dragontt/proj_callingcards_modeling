@@ -519,6 +519,11 @@ def plot_holdout_features(scores_test, scores_holdout, features_var, feature_nam
 
 
 def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, opt_param=False):
+
+	## TODO: dict to store simulated results
+	sim_dict = {"cc_high":{}, "cc_low":{}, "hm_high":{}, "hm_low":{}}
+
+
 	results = []
 	num_rnd_permu = 80
 	## define training, testing split
@@ -569,7 +574,7 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 
 		auprc_te = 100*average_precision_score(y_tr[cv_te], cv_pred_prob)
 		combined_auprcs = np.append(combined_auprcs, auprc_te)
-		print 'validation AuPRC:', auprc_te
+		print 'validation AuPRC: %.2f%%' % auprc_te
 		## TODO: changed to rankings of predicted probs
 		# y_pred_prob = np.append(y_pred_prob, rankdata(cv_pred_prob))
 
@@ -579,6 +584,74 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 			for j in range(rnd_X_tr_cv_te.shape[1]):
 				rnd_X_tr_cv_te[:,j] = np.random.permutation(rnd_X_tr_cv_te[:,j])
 			y_rnd_prob[i] = np.append(y_rnd_prob[i], model.predict_proba(rnd_X_tr_cv_te)[:,de_class_indx]) 
+
+
+
+		## TODO: test on perturbed feature values
+		auprc_loss_pert = []
+		for findx in range(0, 160):
+			X_pert = np.copy(X_cv_te)
+			X_pert[:,findx] = np.max(X_cv_te[:,findx])
+			pert_prob = model.predict_proba(X_pert)[:,de_class_indx]
+			auprc_pert = 100*average_precision_score(y_tr[cv_te], pert_prob)
+			auprc_loss_pert.append(auprc_pert - auprc_te)
+		    # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+		print('cc high sim.')
+		print(np.argsort(auprc_loss_pert)[:5])
+		print(np.sort(auprc_loss_pert)[:5])
+		sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+									"loss": np.sort(auprc_loss_pert)[:20].tolist()}
+
+		auprc_loss_pert = []
+		for findx in range(0, 160): 
+			X_pert = np.copy(X_cv_te)
+			X_pert[:,findx] = np.min(X_cv_te[:,findx])
+			pert_prob = model.predict_proba(X_pert)[:,de_class_indx]
+			auprc_pert = 100*average_precision_score(y_tr[cv_te], pert_prob)
+			auprc_loss_pert.append(auprc_pert - auprc_te)
+			# print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+		print('cc low sim.')
+		print(np.argsort(auprc_loss_pert)[:5])
+		print(np.sort(auprc_loss_pert)[:5])
+		sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+									"loss": np.sort(auprc_loss_pert)[:20].tolist()}
+
+		auprc_loss_pert = []
+		for findx in range(160, 170):
+			X_pert = np.copy(X_cv_te)
+			X_pert[:,findx] = np.max(X_cv_te[:,findx])
+			pert_prob = model.predict_proba(X_pert)[:,de_class_indx]
+			auprc_pert = 100*average_precision_score(y_tr[cv_te], pert_prob)
+			auprc_loss_pert.append(auprc_pert - auprc_te)
+		    # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+		print('hm high sim.')
+		print(np.argsort(auprc_loss_pert))
+		print(np.sort(auprc_loss_pert))
+		sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+									"loss": np.sort(auprc_loss_pert).tolist()}
+
+		auprc_loss_pert = []
+		for findx in range(160, 170): 
+			X_pert = np.copy(X_cv_te)
+			X_pert[:,findx] = np.min(X_cv_te[:,findx])
+			pert_prob = model.predict_proba(X_pert)[:,de_class_indx]
+			auprc_pert = 100*average_precision_score(y_tr[cv_te], pert_prob)
+			auprc_loss_pert.append(auprc_pert - auprc_te)
+			# print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+		print('hm low sim.')
+		print(np.argsort(auprc_loss_pert))
+		print(np.sort(auprc_loss_pert))
+		sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+									"loss": np.sort(auprc_loss_pert).tolist()}
+
+	## TODO: save dict
+	import json
+	with open("output4/multiTF_feature_ranking.rf.json", "w") as fp:
+		json.dump(sim_dict, fp, sort_keys=True, indent=4)
+
+
+
+
 	## calculate AUPRs
 	results = np.hstack((y_all_tr.reshape(-1,1), y_pred_prob.reshape(-1,1)))
 	print '$$ Average AuPRCs: %.2f%%, Overall AuPRC: %.2f%%' % (np.mean(combined_auprcs), 100* average_precision_score(results[:,0], results[:,1]))
