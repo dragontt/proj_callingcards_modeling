@@ -57,10 +57,11 @@ def prepare_data(parsed, cc_feature_filtering_prefix="logrph", shuffle_sample=Tr
     # cc_feature_filtering_prefix = "logrph"
     # cc_feature_filtering_prefix = "logrph_total"
     bp_feature_filtering_prefix = ["sum_score", "count", "dist"]
-    ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1','H3K4me3_prom_-1',
-                                    'H3K79me_prom_-1','H4K16ac_prom_-1','H3K27ac_body',
-                                    'H3K36me3_body','H3K4me3_body','H3K79me_body',
-                                    'H4K16ac_body']
+    ca_feature_filtering_prefix = ['H3K27ac_prom_-1','H3K36me3_prom_-1',
+                                    'H3K4me3_prom_-1','H3K79me_prom_-1',
+                                    'H4K16ac_prom_-1','H3K27ac_body',
+                                    'H3K36me3_body','H3K4me3_body',
+                                    'H3K79me_body','H4K16ac_body']
     print("... querying data")
     if parsed.file_ca is None:
         if cc_feature_filtering_prefix.endswith("total"):
@@ -204,12 +205,13 @@ def cross_validate_model(X, y, num_fold=10, weighted=False, balanced=False):
     for k, (train, test) in enumerate(k_fold.split(X, y)):
         print('... working on cv fold %d' % k)
         ## train and test
+        torch.manual_seed(1)
         conv_net = train_ConvNet(X[train], y[train], weighted, balanced)
         accu_test, auprc_test, y_pred = test_ConvNet(conv_net, X[test], y[test])
         auprcs_arr = np.append(auprcs_arr, auprc_test)
         combined_y_pred = np.append(combined_y_pred, y_pred)
         combined_y = np.append(combined_y, y[test])
-        print('Test set\tAccu: %.2f%%\tAuPRC: %.2f%%' % (accu_test, auprc_test))
+        print('Test set\tAuPRC: %.2f%%' % (auprc_test))
         ## test randomized data
         accu_rand, auprc_rand = np.zeros(20), np.zeros(20)
         for i in range(20):
@@ -217,7 +219,7 @@ def cross_validate_model(X, y, num_fold=10, weighted=False, balanced=False):
             for j in range(X_rand.shape[1]):
                 X_rand[:,j] = np.random.permutation(X_rand[:,j])
             accu_rand[i], auprc_rand[i], _ = test_ConvNet(conv_net, X_rand, y[test])
-        print('Randomized\tAccu: %.2f%%\tAuPRC: %.2f%%' % (np.median(accu_rand), np.median(auprc_rand)))
+        print('Randomized\tAuPRC: %.2f%%' % (np.median(auprc_rand)))
     ## overall AuPRC
     overall_auprc = 100* average_precision_score(combined_y, combined_y_pred)
     print("$$ Average AuPRCs: %.2f%%, Overall AuPRC: %.2f%%\n" % (np.mean(auprcs_arr),overall_auprc))
@@ -334,6 +336,7 @@ def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balance
     for k, (train, test) in enumerate(k_fold.split(X, y)):
         print('... working on cv fold %d' % k)
         ## train and test
+        torch.manual_seed(1)
         conv_net = train_hierarchicalConvNet(X[train][:,:160], X[train][:,160:], y[train], weighted, balanced)
         accu_test, auprc_test, y_pred = test_hierarchicalConvNet(conv_net, X[test][:,:160], X[test][:,160:], y[test])
         auprcs_arr = np.append(auprcs_arr, auprc_test)
@@ -351,63 +354,63 @@ def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balance
 
 
 
-        ## TODO: test on perturbed feature values
-        auprc_loss_pert = []
-        for findx in range(0, 160): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.max(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-        print('cc high sim.')
-        print(np.argsort(auprc_loss_pert)[:5])
-        print(np.sort(auprc_loss_pert)[:5])
-        sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+    #     ## TODO: test on perturbed feature values
+    #     auprc_loss_pert = []
+    #     for findx in range(0, 160): 
+    #         X_pert = np.copy(X[test])
+    #         X_pert[:,findx] = np.max(X[test][:,findx])
+    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+    #         auprc_loss_pert.append(auprc_pert - auprc_test)
+    #         # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+    #     print('cc high sim.')
+    #     print(np.argsort(auprc_loss_pert)[:5])
+    #     print(np.sort(auprc_loss_pert)[:5])
+    #     sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+    #                                 "loss": np.sort(auprc_loss_pert)[:20].tolist()}
 
-        auprc_loss_pert = []
-        for findx in range(0, 160): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.min(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-        print('cc low sim.')
-        print(np.argsort(auprc_loss_pert)[:5])
-        print(np.sort(auprc_loss_pert)[:5])
-        sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+    #     auprc_loss_pert = []
+    #     for findx in range(0, 160): 
+    #         X_pert = np.copy(X[test])
+    #         X_pert[:,findx] = np.min(X[test][:,findx])
+    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+    #         auprc_loss_pert.append(auprc_pert - auprc_test)
+    #         # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+    #     print('cc low sim.')
+    #     print(np.argsort(auprc_loss_pert)[:5])
+    #     print(np.sort(auprc_loss_pert)[:5])
+    #     sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+    #                                 "loss": np.sort(auprc_loss_pert)[:20].tolist()}
 
-        auprc_loss_pert = []
-        for findx in range(160, 170): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.max(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-        print('hm high sim.')
-        print(np.argsort(auprc_loss_pert))
-        print(np.sort(auprc_loss_pert))
-        sim_dict["hm_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-                                    "loss": np.sort(auprc_loss_pert).tolist()}
+    #     auprc_loss_pert = []
+    #     for findx in range(160, 170): 
+    #         X_pert = np.copy(X[test])
+    #         X_pert[:,findx] = np.max(X[test][:,findx])
+    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+    #         auprc_loss_pert.append(auprc_pert - auprc_test)
+    #         # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+    #     print('hm high sim.')
+    #     print(np.argsort(auprc_loss_pert))
+    #     print(np.sort(auprc_loss_pert))
+    #     sim_dict["hm_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+    #                                 "loss": np.sort(auprc_loss_pert).tolist()}
 
-        auprc_loss_pert = []
-        for findx in range(160, 170): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.min(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-        print('hm low sim.')
-        print(np.argsort(auprc_loss_pert))
-        print(np.sort(auprc_loss_pert))
-        sim_dict["hm_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-                                    "loss": np.sort(auprc_loss_pert).tolist()}
+    #     auprc_loss_pert = []
+    #     for findx in range(160, 170): 
+    #         X_pert = np.copy(X[test])
+    #         X_pert[:,findx] = np.min(X[test][:,findx])
+    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+    #         auprc_loss_pert.append(auprc_pert - auprc_test)
+    #         # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+    #     print('hm low sim.')
+    #     print(np.argsort(auprc_loss_pert))
+    #     print(np.sort(auprc_loss_pert))
+    #     sim_dict["hm_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+    #                                 "loss": np.sort(auprc_loss_pert).tolist()}
 
-    ## TODO: save dict
-    import json
-    with open("output4/multiTF_feature_ranking.cnn.json", "w") as fp:
-        json.dump(sim_dict, fp, sort_keys=True, indent=4)
+    # ## TODO: save dict
+    # import json
+    # with open("output4/multiTF_feature_ranking.cnn.json", "w") as fp:
+    #     json.dump(sim_dict, fp, sort_keys=True, indent=4)
 
 
     ## overall AuPRC
@@ -479,9 +482,9 @@ def main(argv):
         ## validate RF
         print("-----\nRF\n-----")
         _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
-        # print("-----\nRF sum logRPH\n-----")
-        # combined_data, combined_labels = prepare_data(parsed, "logrph_total")
-        # _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
+        print("-----\nRF sum logRPH\n-----")
+        combined_data, combined_labels = prepare_data(parsed, "logrph_total")
+        _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
 
 
 if __name__ == "__main__":
