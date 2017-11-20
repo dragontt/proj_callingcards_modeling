@@ -321,7 +321,7 @@ def test_hierarchicalConvNet(conv_net, X, Z, y):
     return accu, auprc, y_softmax_out.data[:,1].numpy()
 
 
-def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balanced=False):
+def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balanced=False, json_filename=None):
 
     ## TODO: dict to store output
     sim_dict = {"cc_high":{}, "cc_low":{}, "hm_high":{}, "hm_low":{}}
@@ -354,63 +354,63 @@ def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balance
 
 
 
-    #     ## TODO: test on perturbed feature values
-    #     auprc_loss_pert = []
-    #     for findx in range(0, 160): 
-    #         X_pert = np.copy(X[test])
-    #         X_pert[:,findx] = np.max(X[test][:,findx])
-    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-    #         auprc_loss_pert.append(auprc_pert - auprc_test)
-    #         # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-    #     print('cc high sim.')
-    #     print(np.argsort(auprc_loss_pert)[:5])
-    #     print(np.sort(auprc_loss_pert)[:5])
-    #     sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-    #                                 "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+        ## TODO: test on perturbed feature values
+        auprc_loss_pert = []
+        for findx in range(0, 160): 
+            X_pert = np.copy(X[test])
+            X_pert[:,findx] = np.max(X[test][:,findx])
+            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+            auprc_loss_pert.append(auprc_pert - auprc_test)
+            # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+        print('cc high sim.')
+        print(np.argsort(auprc_loss_pert)[:5])
+        print(np.sort(auprc_loss_pert)[:5])
+        sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
 
-    #     auprc_loss_pert = []
-    #     for findx in range(0, 160): 
-    #         X_pert = np.copy(X[test])
-    #         X_pert[:,findx] = np.min(X[test][:,findx])
-    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-    #         auprc_loss_pert.append(auprc_pert - auprc_test)
-    #         # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-    #     print('cc low sim.')
-    #     print(np.argsort(auprc_loss_pert)[:5])
-    #     print(np.sort(auprc_loss_pert)[:5])
-    #     sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-    #                                 "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+        auprc_loss_pert = []
+        for findx in range(0, 160): 
+            X_pert = np.copy(X[test])
+            X_pert[:,findx] = np.min(X[test][:,findx])
+            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+            auprc_loss_pert.append(auprc_pert - auprc_test)
+            # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+        print('cc low sim.')
+        print(np.argsort(auprc_loss_pert)[:5])
+        print(np.sort(auprc_loss_pert)[:5])
+        sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
+                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
 
-    #     auprc_loss_pert = []
-    #     for findx in range(160, 170): 
-    #         X_pert = np.copy(X[test])
-    #         X_pert[:,findx] = np.max(X[test][:,findx])
-    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-    #         auprc_loss_pert.append(auprc_pert - auprc_test)
-    #         # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-    #     print('hm high sim.')
-    #     print(np.argsort(auprc_loss_pert))
-    #     print(np.sort(auprc_loss_pert))
-    #     sim_dict["hm_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-    #                                 "loss": np.sort(auprc_loss_pert).tolist()}
+        auprc_loss_pert = []
+        for findx in range(160, 170): 
+            X_pert = np.copy(X[test])
+            X_pert[:,findx] = np.max(X[test][:,findx])
+            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+            auprc_loss_pert.append(auprc_pert - auprc_test)
+            # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
+        print('hm high sim.')
+        print(np.argsort(auprc_loss_pert))
+        print(np.sort(auprc_loss_pert))
+        sim_dict["hm_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+                                    "loss": np.sort(auprc_loss_pert).tolist()}
 
-    #     auprc_loss_pert = []
-    #     for findx in range(160, 170): 
-    #         X_pert = np.copy(X[test])
-    #         X_pert[:,findx] = np.min(X[test][:,findx])
-    #         accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-    #         auprc_loss_pert.append(auprc_pert - auprc_test)
-    #         # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-    #     print('hm low sim.')
-    #     print(np.argsort(auprc_loss_pert))
-    #     print(np.sort(auprc_loss_pert))
-    #     sim_dict["hm_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-    #                                 "loss": np.sort(auprc_loss_pert).tolist()}
+        auprc_loss_pert = []
+        for findx in range(160, 170): 
+            X_pert = np.copy(X[test])
+            X_pert[:,findx] = np.min(X[test][:,findx])
+            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
+            auprc_loss_pert.append(auprc_pert - auprc_test)
+            # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
+        print('hm low sim.')
+        print(np.argsort(auprc_loss_pert))
+        print(np.sort(auprc_loss_pert))
+        sim_dict["hm_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
+                                    "loss": np.sort(auprc_loss_pert).tolist()}
 
-    # ## TODO: save dict
-    # import json
-    # with open("output4/multiTF_feature_ranking.cnn.json", "w") as fp:
-    #     json.dump(sim_dict, fp, sort_keys=True, indent=4)
+    ## TODO: save dict
+    import json
+    with open(json_filename, "w") as fp:
+        json.dump(sim_dict, fp, sort_keys=True, indent=4)
 
 
     ## overall AuPRC
@@ -465,26 +465,16 @@ def main(argv):
         ## validate CNN
         print("-----\nCNN\n-----")
         cross_validate_model(combined_data, combined_labels, 10, parsed.weighted_class, parsed.balanced_trainset)
-        
-        ## validate RF
-        print("-----\nRF\n-----")
-        _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
-        print("-----\nRF sum logRPH\n-----")
-        combined_data, combined_labels = prepare_data(parsed, "logrph_total")
-        _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
 
     else:
         combined_data, combined_labels = prepare_data(parsed)
         ## validate CNN
         print("-----\nCNN\n-----")
-        cross_validate_hierarchical_model(combined_data, combined_labels, 10, parsed.weighted_class, parsed.balanced_trainset)
-        
-        ## validate RF
-        print("-----\nRF\n-----")
-        _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
-        print("-----\nRF sum logRPH\n-----")
-        combined_data, combined_labels = prepare_data(parsed, "logrph_total")
-        _ = model_interactive_feature(combined_data, combined_labels, "RandomForestClassifier", False)
+        if parsed.valid_sample_name is None:
+            json_filename = "output4/multiTF_feature_ranking.cnn.json"
+        else:
+            json_filename = "output4/"+ parsed.valid_sample_name +"_feature_ranking.cnn.json"
+        cross_validate_hierarchical_model(combined_data, combined_labels, 10, parsed.weighted_class, parsed.balanced_trainset, json_filename)
 
 
 if __name__ == "__main__":
