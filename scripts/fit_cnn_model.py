@@ -36,11 +36,12 @@ def parse_args(argv):
 def prepare_data(parsed, cc_feature_filtering_prefix="logrph", shuffle_sample=True):
     if parsed.de_dir: ## parse valid DE samples if available
         files_de = glob.glob(parsed.de_dir +"/*15min.DE.txt")
-        if parsed.valid_sample_name:
+        if parsed.valid_sample_name is not None:
             valid_sample_names = [parsed.valid_sample_name]
         else:
             #valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
-            valid_sample_names = ['YLR451W', 'YKL038W', 'YDR034C']
+            # valid_sample_names = ['YLR451W', 'YKL038W', 'YDR034C']
+            valid_sample_names = ['NOTF_Minus_Adh1_2015_17_combined']
         label_type = "continuous"
     else:
         sys.exit("Require the label directory: optimized subset file or DE folder!") 
@@ -356,56 +357,53 @@ def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balance
 
         ## TODO: test on perturbed feature values
         auprc_loss_pert = []
-        for findx in range(0, 160): 
+        conf_change_pert = []
+        for findx in range(0, 170): 
             X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.max(X[test][:,findx])
+            ## TODO: change to max observed value from all
+            X_pert[:,findx] = np.max(X[train][:,findx]) 
+            
             accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
             auprc_loss_pert.append(auprc_pert - auprc_test)
+            conf_change_pert.append(np.mean(y_pert - y_pred))
             # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-        print('cc high sim.')
-        print(np.argsort(auprc_loss_pert)[:5])
-        print(np.sort(auprc_loss_pert)[:5])
-        sim_dict["cc_high"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+        sim_dict["cc_high"][k] = {
+                    "indx": np.argsort(auprc_loss_pert[:160])[:20].tolist(),
+                    "loss": np.sort(auprc_loss_pert[:160])[:20].tolist(),
+                    "indx_conf": np.argsort(conf_change_pert[:160])[::-1][:20].tolist(),
+                    "conf_change": np.sort(conf_change_pert[:160])[::-1][:20].tolist()
+                    }
+        sim_dict["hm_high"][k] = {
+                    "indx": np.argsort(auprc_loss_pert[160:]).tolist(),
+                    "loss": np.sort(auprc_loss_pert[160:]).tolist(),
+                    "indx_conf": np.argsort(conf_change_pert[160:])[::-1].tolist(),
+                    "conf_change": np.sort(conf_change_pert[160:])[::-1].tolist()
+                    }
 
         auprc_loss_pert = []
-        for findx in range(0, 160): 
+        conf_change_pert = []
+        for findx in range(0, 170): 
             X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.min(X[test][:,findx])
+            ## TODO: change to min observed value from all
+            X_pert[:,findx] = np.min(X[train][:,findx])
+
             accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
             auprc_loss_pert.append(auprc_pert - auprc_test)
+            conf_change_pert.append(np.mean(y_pert - y_pred))
             # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-        print('cc low sim.')
-        print(np.argsort(auprc_loss_pert)[:5])
-        print(np.sort(auprc_loss_pert)[:5])
-        sim_dict["cc_low"][k] = {"indx": np.argsort(auprc_loss_pert)[:20].tolist(),
-                                    "loss": np.sort(auprc_loss_pert)[:20].tolist()}
+        sim_dict["cc_low"][k] = {
+                    "indx": np.argsort(auprc_loss_pert[:160])[:20].tolist(),
+                    "loss": np.sort(auprc_loss_pert[:160])[:20].tolist(),
+                    "indx_conf": np.argsort(conf_change_pert[:160])[:20].tolist(),
+                    "conf_change": np.sort(conf_change_pert[:160])[:20].tolist()
+                    }
+        sim_dict["hm_low"][k] = {
+                    "indx": np.argsort(auprc_loss_pert[160:]).tolist(),
+                    "loss": np.sort(auprc_loss_pert[160:]).tolist(),
+                    "indx_conf": np.argsort(conf_change_pert[160:])[::-1].tolist(),
+                    "conf_change": np.sort(conf_change_pert[160:])[::-1].tolist()
+                    }
 
-        auprc_loss_pert = []
-        for findx in range(160, 170): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.max(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\thigh\t%.2f%%' % (findx, auprc_pert))
-        print('hm high sim.')
-        print(np.argsort(auprc_loss_pert))
-        print(np.sort(auprc_loss_pert))
-        sim_dict["hm_high"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-                                    "loss": np.sort(auprc_loss_pert).tolist()}
-
-        auprc_loss_pert = []
-        for findx in range(160, 170): 
-            X_pert = np.copy(X[test])
-            X_pert[:,findx] = np.min(X[test][:,findx])
-            accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
-            auprc_loss_pert.append(auprc_pert - auprc_test)
-            # print('%d\tlow\t%.2f%%' % (findx, auprc_pert))
-        print('hm low sim.')
-        print(np.argsort(auprc_loss_pert))
-        print(np.sort(auprc_loss_pert))
-        sim_dict["hm_low"][k] = {"indx": np.argsort(auprc_loss_pert).tolist(),
-                                    "loss": np.sort(auprc_loss_pert).tolist()}
 
     ## TODO: save dict
     import json
