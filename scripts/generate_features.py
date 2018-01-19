@@ -53,7 +53,7 @@ def load_orf_peaks(file):
 						names=["Orf","TPH","RPH","Strand","Dist"])
 
 
-def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, bkgd = "", expt_totals = "", bkgd_totals = ""):
+def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, expt_totals=None, bkgd=None, bkgd_totals=None):
 	## get number of bins
 	#shift = bin_width/2
 	# bins = (prom_range[1]-prom_range[0]) *2 / bin_width - 1
@@ -99,7 +99,7 @@ def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, bkgd
 					feature_mtx[i, k*3+2] += np.log2(curr_rph +1) ## add pseudocount
 
 		## subtract normalized background hops and reads in bins
-		if binding_data=="calling_cards":
+		if binding_data=="calling_cards" and bkgd is not None:
 			if orf in list(bkgd["Orf"]):
 				for j, row in bkgd.loc[bkgd["Orf"] == orf].iterrows():
 					bkgd_dist = row["Dist"]
@@ -335,9 +335,13 @@ def main(argv):
 				print "... working on", file_in_basename
 				experiment_totals = totals_dict[file_in_basename]
 				experiment = load_orf_hops(file_in)
-				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range,
+				feature_matrix = generate_binned_hop_features(parsed.binding_data,
+											parsed.bin_width, promoter_range,
 											experiment, background,
 											experiment_totals, background_totals)
+				# feature_matrix = generate_binned_hop_features(parsed.binding_data,
+				# 							parsed.bin_width, promoter_range,
+				# 							experiment, experiment_totals)
 				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
 				write_feature_matrix(file_output, feature_matrix)
 

@@ -203,7 +203,7 @@ def main(argv):
 	## map hops to each orf, and each hop is allowed to multiple orfs
 	print "Matching hops to orf promoters"
 	files_experiment_bed = glob.glob(parsed.output_dir +"/*.bed")
-	files_experiment_bed.remove(file_orf_atg)
+	# files_experiment_bed.remove(file_orf_atg)
 	for file_experiment_bed in files_experiment_bed:
 		file_basename_experiment_bed = os.path.basename(file_experiment_bed)
 		if not file_basename_experiment_bed.startswith('orf'):
