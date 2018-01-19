@@ -23,7 +23,7 @@ def parse_args(argv):
     parser.add_argument("-m","--method", 
     					help="choose from ['holdout_feature_classification', 'holdout_feature_regression', 'tree_rank_highest_peaks', 'sequential_forward_selection', 'sequential_backward_selection', 'tree_rank_linked_peaks']")
     parser.add_argument("-t","--feature_type", 
-    					help="choose from ['highest_peaks', 'binned_promoter']")
+    					help="choose from ['highest_peaks', 'binned_promoter']", default='binned_promoter')
     parser.add_argument("-c","--cc_dir", help="Calling Cards feature directory")
     parser.add_argument("-d","--de_dir", help="Differential expression directory")
     parser.add_argument("-p","--bp_dir", help="Binding potential directory")
@@ -46,13 +46,21 @@ def main(argv):
 	elif parsed.de_dir: ## parse valid DE samples if available
 		# files_de = glob.glob(parsed.de_dir +"/*.DE.tsv")
 		# valid_sample_names = [os.path.basename(f).split('.')[0] for f in files_de]
-		files_de = glob.glob(parsed.de_dir +"/*15min.DE.txt")
+
+		# files_de = glob.glob(parsed.de_dir +"/*15min.DE.txt")
+		files_de = glob.glob(parsed.de_dir +"/*.DE.txt")
 		if parsed.valid_sample_name:
 			valid_sample_names = [parsed.valid_sample_name]
 		else:
-			# valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
-			valid_sample_names = ['YDR034C','YJR060W','YKL038W','YLR451W']
-		label_type = "continuous"
+			valid_de_sample_names = [os.path.basename(f).split('-')[0].split('.')[0] for f in files_de]
+			valid_cc_sample_names = [os.path.basename(f).split('.')[0] for f in glob.glob(parsed.cc_dir +"/*cc_feature_matrix.binned_promoter.txt")]
+			valid_sample_names = np.intersect1d(valid_de_sample_names, valid_cc_sample_names)
+			if len(valid_sample_names) == 0:
+				sys.exit("No intersected marker gene found in both sets!")
+			print "Matched marker genes: (N=%d)" % len(valid_sample_names), sorted(valid_sample_names)
+			# valid_sample_names = ['YDR034C','YJR060W','YKL038W','YLR451W']
+		label_type = "conti2top5pct"
+		
 	else:
 		sys.exit("Require the label directory: optimized subset file or DE folder!") 
 
@@ -249,24 +257,33 @@ def main(argv):
 	elif parsed.method == "simple_precision_recall":
 		## parse input
 		files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-		data_collection, cc_features = process_data_collection(files_cc, files_de,
-												valid_sample_names, label_type)
+		data_collection, cc_features = process_data_collection(files_cc, files_de, valid_sample_names, label_type, False)
 		## query samples
 		compiled_results = np.empty((5,0))
 		# for sample_name in ['combined-all']: #["combined-plusLys", "combined-minusLys"]: 
 		for sample_name in sorted(data_collection.keys()):
+			print "... working on %s" % sample_name
 			for feature_filtering_prefix in ["logrph_total"]:
 			# for feature_filtering_prefix in ["tph_total", "rph_total", "logrph_total"]:
-				labels, cc_data, _ = query_data_collection(data_collection,
-															sample_name, cc_features, 
-															feature_filtering_prefix)
+				labels, cc_data, _ = query_data_collection(data_collection, sample_name, cc_features, feature_filtering_prefix)
+
+				# np.savetxt("output5/precision_rank_simple/tmp.ChIP_v_Hu."+ sample_name +".txt", np.hstack((labels.reshape(-1,1), cc_data)), fmt='%s', delimiter='\t')
+
 				## plot precision-recall with randomly permuted signals
-				# figname = '../output/PR_'+ feature_filtering_prefix.split('_')[0] +'.'+ sample_name +'.pdf'
-				figname = None
-				results = plot_precision_recall_w_random_signal(cc_data, labels, 0.1, figname)
+				# figname = '../output/PR_'+ feature_filtering_prefix.split('_')[0] +'.'+ sample_name +'.pdf' 
+				## reusults columns:
+				## 1. median AuPRC of randomized data
+				## 2. lower 2.5% of randomlized results
+				## 3. upper 97.5% of randomlized results
+				## 4. upper error bar length
+				## 5. AuPRC of the real data
+				results = plot_precision_recall_w_random_signal(cc_data, labels)  
 				compiled_results = np.hstack((compiled_results, np.array(results).reshape(-1,1)))
 		compiled_results = np.vstack((np.array(sorted(data_collection.keys()))[np.newaxis], compiled_results))
-		np.savetxt('../output2/tmp.txt', compiled_results, fmt="%s", delimiter='\t')
+
+		# output_filename = '../output5/tmp.comparison.txt'
+		output_filename = parsed.output_filename
+		np.savetxt(output_filename, compiled_results, fmt="%s", delimiter='\t')
 
 
 	elif parsed.method == "single_feature_learning":

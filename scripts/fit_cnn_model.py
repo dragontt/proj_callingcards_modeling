@@ -20,7 +20,7 @@ import torch.optim as optim
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
     parser.add_argument("-t","--feature_type", 
-                        help="choose from ['highest_peaks', 'binned_promoter']")
+                        help="choose from ['highest_peaks', 'binned_promoter']", default='binned_promoter')
     parser.add_argument("-c","--cc_dir", help="Calling Cards feature directory")
     parser.add_argument("-d","--de_dir", help="Differential expression directory")
     parser.add_argument("-p","--bp_dir", help="Binding potential directory")
@@ -33,24 +33,29 @@ def parse_args(argv):
     return parsed
 
 
+
+
+
 def prepare_data(parsed, cc_feature_filtering_prefix="logrph", shuffle_sample=True):
     if parsed.de_dir: ## parse valid DE samples if available
         files_de = glob.glob(parsed.de_dir +"/*15min.DE.txt")
         if parsed.valid_sample_name is not None:
             valid_sample_names = [parsed.valid_sample_name]
         else:
-            #valid_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
+            valid_de_sample_names = [os.path.basename(f).split('-')[0] for f in files_de]
+            valid_cc_sample_names = [os.path.basename(f).split('.')[0] for f in glob.glob(parsed.cc_dir +"/*cc_feature_matrix.binned_promoter.txt")]
+            valid_sample_names = np.intersect1d(valid_de_sample_names, valid_cc_sample_names)
+            
             # valid_sample_names = ['YLR451W', 'YKL038W', 'YDR034C']
-            valid_sample_names = ['NOTF_Minus_Adh1_2015_17_combined']
-        label_type = "continuous"
+            # valid_sample_names = ['NOTF_Minus_Adh1_2015_17_combined']
     else:
         sys.exit("Require the label directory: optimized subset file or DE folder!") 
 
     ## parse input
     label_type = "conti2top5pct"
     files_cc = glob.glob(parsed.cc_dir +"/*.cc_feature_matrix."+ parsed.feature_type +".txt")
-    cc_data_collection, cc_features = process_data_collection(files_cc, files_de,
-                                            valid_sample_names, label_type, False)
+
+    cc_data_collection, cc_features = process_data_collection(files_cc, files_de, valid_sample_names, label_type, False)
     if parsed.file_ca is not None:
         ca_data, _, ca_features, _ = prepare_datasets_w_de_labels(parsed.file_ca, files_de[0], "pval", 0.1)
     
@@ -384,9 +389,7 @@ def cross_validate_hierarchical_model(X, y, num_fold=10, weighted=False, balance
         conf_change_pert = []
         for findx in range(0, 170): 
             X_pert = np.copy(X[test])
-            ## TODO: change to min observed value from all
             X_pert[:,findx] = np.min(X[train][:,findx])
-
             accu_pert, auprc_pert, y_pert = test_hierarchicalConvNet(conv_net, X_pert[:,:160], X_pert[:,160:], y[test])
             auprc_loss_pert.append(auprc_pert - auprc_test)
             conf_change_pert.append(np.mean(y_pert - y_pred))
