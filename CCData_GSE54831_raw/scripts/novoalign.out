@@ -1,0 +1,56 @@
+filtering AATTCACTACGTCAACA
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166510.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166510.err |samtools view -bS -q 10 > ../SRA_files/SRR1166510.bam
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166502.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166502.err |samtools view -bS -q 10 > ../SRA_files/SRR1166502.bam
+filtering AATTCACTACGTCAACA
+filtering AATTCACTACGTCAACA
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166511.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166511.err |samtools view -bS -q 10 > ../SRA_files/SRR1166511.bam
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166509.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166509.err |samtools view -bS -q 10 > ../SRA_files/SRR1166509.bam
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166503.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166503.err |samtools view -bS -q 10 > ../SRA_files/SRR1166503.bam
+filtering AATTCACTACGTCAACA
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166508.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166508.err |samtools view -bS -q 10 > ../SRA_files/SRR1166508.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166504.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166504.err |samtools view -bS -q 10 > ../SRA_files/SRR1166504.bam
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166506.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166506.err |samtools view -bS -q 10 > ../SRA_files/SRR1166506.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166505.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166505.err |samtools view -bS -q 10 > ../SRA_files/SRR1166505.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166507.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166507.err |samtools view -bS -q 10 > ../SRA_files/SRR1166507.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166512.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166512.err |samtools view -bS -q 10 > ../SRA_files/SRR1166512.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166513.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166513.err |samtools view -bS -q 10 > ../SRA_files/SRR1166513.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166514.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166514.err |samtools view -bS -q 10 > ../SRA_files/SRR1166514.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166515.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166515.err |samtools view -bS -q 10 > ../SRA_files/SRR1166515.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166516.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166516.err |samtools view -bS -q 10 > ../SRA_files/SRR1166516.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166517.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166517.err |samtools view -bS -q 10 > ../SRA_files/SRR1166517.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166518.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166518.err |samtools view -bS -q 10 > ../SRA_files/SRR1166518.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166519.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166519.err |samtools view -bS -q 10 > ../SRA_files/SRR1166519.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166520.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166520.err |samtools view -bS -q 10 > ../SRA_files/SRR1166520.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166521.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166521.err |samtools view -bS -q 10 > ../SRA_files/SRR1166521.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166522.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166522.err |samtools view -bS -q 10 > ../SRA_files/SRR1166522.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166523.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166523.err |samtools view -bS -q 10 > ../SRA_files/SRR1166523.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166524.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166524.err |samtools view -bS -q 10 > ../SRA_files/SRR1166524.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166525.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166525.err |samtools view -bS -q 10 > ../SRA_files/SRR1166525.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166526.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166526.err |samtools view -bS -q 10 > ../SRA_files/SRR1166526.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166527.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166527.err |samtools view -bS -q 10 > ../SRA_files/SRR1166527.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166528.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166528.err |samtools view -bS -q 10 > ../SRA_files/SRR1166528.bam
+filtering AATTCACTACGTCAACA
+novoalign -o SAM -d ../S288C/S288C_reference_sequence_R61-1-1_20080605.nix -f ../SRA_files/SRR1166529.fastq -5 AATTCACTACGTCAACA -n 117 2> ../SRA_files/SRR1166529.err |samtools view -bS -q 10 > ../SRA_files/SRR1166529.bam
