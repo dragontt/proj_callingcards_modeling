@@ -1,6 +1,7 @@
 #!/usr/bin/python
 import sys
 import numpy as np
+import glob
 import os.path
 from scipy.stats import rankdata
 from sklearn.metrics import average_precision_score
@@ -141,22 +142,22 @@ def plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip,
 	xpts_hu_chip, rates_hu_chip = cal_support_rates(file_hu_chip, step, bin, True) if os.path.isfile(file_hu_chip) else (range(bin), None)
 	xpts_kemmeren_chip, rates_kemmeren_chip = cal_support_rates(file_kemmeren_chip, step, bin, True) if os.path.isfile(file_kemmeren_chip) else (range(bin), None)
 
-	##print precision at rank 50
-	# print "%d\t%d\t%d\n%d\t%d\t%d\n" % (
-	# 		xpts_hu_cc[xpts_hu_cc < 50][-1] if rates_hu_cc is not None else 0, 
-	# 		xpts_kemmeren_cc[xpts_kemmeren_cc < 50][-1] if rates_kemmeren_cc is not None else 0, 
-	# 		xpts_zev_cc[xpts_zev_cc < 50][-1] if rates_zev_cc is not None else 0, 
-	# 		xpts_hu_chip[xpts_hu_chip < 50][-1] if rates_hu_chip is not None else 0, 
-	# 		xpts_kemmeren_chip[xpts_kemmeren_chip < 50][-1] if rates_kemmeren_chip is not None else 0, 
-	# 		xpts_zev_chip[xpts_zev_chip < 50][-1] if rates_zev_chip is not None else 0)
-
-	# print "%.3f\t%.3f\t%.3f\n%.3f\t%.3f\t%.3f\n" % (
-	# 		rates_hu_cc[xpts_hu_cc < 50][-1] if rates_hu_cc is not None else 0, 
-	# 		rates_kemmeren_cc[xpts_kemmeren_cc < 50][-1] if rates_kemmeren_cc is not None else 0, 
-	# 		rates_zev_cc[xpts_zev_cc < 50][-1] if rates_zev_cc is not None else 0, 
-	# 		rates_hu_chip[xpts_hu_chip < 50][-1] if rates_hu_chip is not None else 0, 
-	# 		rates_kemmeren_chip[xpts_kemmeren_chip < 50][-1] if rates_kemmeren_chip is not None else 0, 
-	# 		rates_zev_chip[xpts_zev_chip < 50][-1] if rates_zev_chip is not None else 0)
+	##print precision at rank cutoff
+	rank_cutoff = 50
+	# print "%d\t%d\t%d\t%d\t%d\t%d" % (
+	# 		xpts_zev_cc[xpts_zev_cc < rank_cutoff][-1] if rates_zev_cc is not None else 0, 
+	# 		xpts_kemmeren_cc[xpts_kemmeren_cc < rank_cutoff][-1] if rates_kemmeren_cc is not None else 0, 
+	# 		xpts_hu_cc[xpts_hu_cc < rank_cutoff][-1] if rates_hu_cc is not None else 0, 
+	# 		xpts_zev_chip[xpts_zev_chip < rank_cutoff][-1] if rates_zev_chip is not None else 0,
+	# 		xpts_kemmeren_chip[xpts_kemmeren_chip < rank_cutoff][-1] if rates_kemmeren_chip is not None else 0,
+	# 		xpts_hu_chip[xpts_hu_chip < rank_cutoff][-1] if rates_hu_chip is not None else 0) 
+	print "%.3f\t%.3f\t%.3f\t%.3f\t%.3f\t%.3f" % ( 
+			rates_zev_cc[xpts_zev_cc < rank_cutoff][-1] if rates_zev_cc is not None else 0, 
+			rates_kemmeren_cc[xpts_kemmeren_cc < rank_cutoff][-1] if rates_kemmeren_cc is not None else 0,
+			rates_hu_cc[xpts_hu_cc < rank_cutoff][-1] if rates_hu_cc is not None else 0,  
+			rates_zev_chip[xpts_zev_chip < rank_cutoff][-1] if rates_zev_chip is not None else 0, 
+			rates_kemmeren_chip[xpts_kemmeren_chip < rank_cutoff][-1] if rates_kemmeren_chip is not None else 0,
+			rates_hu_chip[xpts_hu_chip < rank_cutoff][-1] if rates_hu_chip is not None else 0)
 
 	## plot precision rank curve
 	fig = plt.figure(num=None, figsize=(4,4), dpi=300)
@@ -194,6 +195,7 @@ def plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip,
 	plt.legend(loc="best", frameon=True)
 	plt.tight_layout()
 	plt.savefig(fig_filename, fmt="pdf")
+	plt.close()
 
 
 """
@@ -211,29 +213,56 @@ for sys_name, common_name in tf_names.iteritems():
 	plot_support_rate1(file_simple_cc, file_rf_cc, file_rf_cc_ca, fig_filename)
 """
 
-"""
-tf_names = {'YJR060W':'Cbf1',
-			'YLR451W':'Leu3',
+# """
+tf_names = {'YLR451W':'Leu3',
 			'YDR034C':'Lys14',
 			'YKL038W':'Rgt1',
 			'YOL067C':'Rtg1',
 			'YHL020C':'Opi1',
 			'YFR034C':'Pho4',
 			'YLR403W':'Sfp1',
-			'YJL056C':'Zap1'}
+			'YJL056C':'Zap1'} ## excluded 'YJR060W':'Cbf1'
 for sys_name, common_name in tf_names.iteritems():
-	print sys_name, common_name
-	file_zev_cc = "../output/tmp.ZEV-15min_x_5TFs.simple.CC."+ sys_name +".txt"
-	file_hu_cc = "../output/tmp.Hu_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
-	file_kemmeren_cc = "../output/tmp.Kemmeren_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
+	sys.stdout.write('%s\t' % common_name)
+	# file_zev_cc = "../output/tmp.ZEV-15min_x_5TFs.simple.CC."+ sys_name +".txt"
+	# file_hu_cc = "../output/tmp.Hu_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
+	# file_kemmeren_cc = "../output/tmp.Kemmeren_x_5TFs.simple.CC."+ sys_name +".DE.tsv.txt"
+	# file_zev_chip = "../output/tmp.ZEV-15min_x_5TFs.simple.ChIP."+ sys_name +".txt"
+	# file_hu_chip = "../output/tmp.Hu_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
+	# file_kemmeren_chip = "../output/tmp.Kemmeren_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
+
+	file_zev_cc = "../output4/tmp.iterRF_finalTest_CCHM_cvrank/tmp.CC_v_ZEV.RF."+ sys_name +".txt"
+	file_hu_cc = "../output4/tmp.CC_v_Hu.RF."+ sys_name +".txt"
+	file_kemmeren_cc = "../output4/tmp.CC_v_Hols.RF."+ sys_name +".txt"
 	file_zev_chip = "../output/tmp.ZEV-15min_x_5TFs.simple.ChIP."+ sys_name +".txt"
 	file_hu_chip = "../output/tmp.Hu_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
 	file_kemmeren_chip = "../output/tmp.Kemmeren_x_5TFs.simple.ChIP."+ sys_name +".DE.tsv.txt"
+
 	fig_filename = "../output/fig_ranking."+ common_name +".pdf"
+	plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename)
+# """
+"""
+tfs_zev_cc = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.CC_vs_ZEV.*.txt")]
+tfs_hu_cc = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.CC_vs_Hu.*.txt")]
+tfs_kemmeren_cc = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.CC_vs_Hols.*.txt")]
+tfs_zev_chip = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.ChIP_v_ZEV.*.txt")]
+tfs_hu_chip = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.ChIP_v_Hu.*.txt")]
+tfs_kemmeren_chip = [f.split('.')[-2] for f in glob.glob("../output5/precision_rank_simple/tmp.ChIP_v_Hols.*.txt")]
+tfs_common = sorted(list(set(tfs_zev_cc) & set(tfs_hu_cc) & set(tfs_kemmeren_cc) & set(tfs_zev_chip) & set(tfs_hu_chip) & set(tfs_kemmeren_chip)))
+for tf in tfs_common:
+	sys.stdout.write('%s\t' % tf)
+	file_zev_cc = "../output5/precision_rank_simple/tmp.CC_vs_ZEV."+ tf +".txt"
+	file_hu_cc = "../output5/precision_rank_simple/tmp.CC_vs_Hu."+ tf +".txt"
+	file_kemmeren_cc = "../output5/precision_rank_simple/tmp.CC_vs_Hols."+ tf +".txt"
+	file_zev_chip = "../output5/precision_rank_simple/tmp.ChIP_v_ZEV."+ tf +".txt"
+	file_hu_chip = "../output5/precision_rank_simple/tmp.ChIP_v_Hu."+ tf +".txt"
+	file_kemmeren_chip = "../output5/precision_rank_simple/tmp.ChIP_v_Hols."+ tf +".txt"
+	fig_filename = "../output/fig_ranking."+ tf +".pdf"
 	plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename)
 """
 
 
+"""
 ## plot directional DE 
 sys_name, common_name, timepoint = 'YJL056C', 'Zap1', '10min'
 file_zev_cc = "../output/tmp.major_DE_direction.ZEV-"+timepoint+"_x_5TFs.simple.CC."+ sys_name +".txt"
@@ -245,7 +274,7 @@ file_kemmeren_chip = "../output/tmp.major_DE_direction.Kemmeren_x_5TFs.simple.Ch
 fig_filename = "../output/fig_ranking.major_DE_direction."+ common_name +".ZEV_"+timepoint+".pdf"
 # fig_filename = "../output/fig_ranking.minor_DE_direction."+ common_name +".ZEV_"+timepoint+".pdf"
 plot_support_rate3(file_zev_cc, file_hu_cc, file_kemmeren_cc, file_zev_chip, file_hu_chip, file_kemmeren_chip, fig_filename)
-
+"""
 
 def plot_support_rate4(file_tf1, file_tf2, file_tfs, label1, label2, label3, fig_filename, step=20, bin=60):
 	print "%.5f\t%.5f\t%.5f" % (cal_auprc(file_tf1), cal_auprc(file_tf2), cal_auprc(file_tfs))

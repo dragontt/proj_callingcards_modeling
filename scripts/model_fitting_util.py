@@ -686,13 +686,16 @@ def model_interactive_feature(X, y, algorithm, split_te_set=True, num_fold=10, o
 
 
 
-def calculate_precision_recall(X0, y0, DE_p_thld=0.1):
+def calculate_precision_recall(X0, y0, DE_p_thld):
 	## treat CC signal as probability of predicting DE
 	X0 = np.ndarray.flatten(X0)
 	X = X0/float(np.max(X0))
 	## convert to categorical labels
-	y = -1*np.ones(len(y0))
-	y[y0 < DE_p_thld] = 1
+	if DE_p_thld is None:
+		X, y = X0, y0
+	else:
+		y = -1*np.ones(len(y0))
+		y[y0 < DE_p_thld] = 1
 	precision, recall, _ = precision_recall_curve(y, X)
 	aupr = average_precision_score(y, X)
 	## special headling on the first actual prediction
@@ -707,7 +710,7 @@ def calculate_precision_recall(X0, y0, DE_p_thld=0.1):
 	return precision, recall, aupr
 
 
-def plot_precision_recall_w_random_signal(cc_data, labels, DE_p_thld, figname):
+def plot_precision_recall_w_random_signal(cc_data, labels, DE_p_thld=None, figname=None):
 	## check zero-length set
 	if len(labels) == 0:
 		return [np.nan]*5
@@ -902,16 +905,16 @@ def process_data_collection(files_cc, file_labels, valid_sample_names, label_typ
 			if label_type == "categorical":
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_optimzed_labels(file_cc, file_labels[sn])
 			elif label_type == "continuous":
-				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0].split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "logfc")
 			elif label_type == "conti2categ":
-				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0].split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "pval", p_cutoff)
-			elif label_type == "conti2top500DE":
-				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
-				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 500)
+			elif label_type == "conti2top100DE":
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0].split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
+				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 100)
 			elif label_type == "conti2top5pct":
-				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0] == sn][0]] ## find the continuous label file that matches CC file
+				file_label = file_labels[[k for k in range(len(file_labels)) if os.path.basename(file_labels[k]).split('-')[0].split('.')[0] == sn][0]] ## find the continuous label file that matches CC file
 				cc_data, labels, cc_features, orfs = prepare_datasets_w_de_labels(file_cc, file_label, "lfc_ranked", 0.05)
 			else:
 				sys.exit("No label type given!")
