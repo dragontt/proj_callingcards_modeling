@@ -1,4 +1,3 @@
 *
-scripts/*.pyc
-!scripts/
+!scripts/*
 !output/.gitignore

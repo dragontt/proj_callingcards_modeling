@@ -16,16 +16,17 @@ python generate_features.py -m highest_peaks -i ../output/ -o ../output/ -c 200
 
 def parse_args(argv):
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("-i","--input_dir")
-    parser.add_argument("-o","--output_dir")
-    parser.add_argument("-m","--feature_model", help="Choose from ['binned_promoter','highest_peaks','num_peaks,'linked_peaks','summarized_peaks']")
-    parser.add_argument("-pu","--promoter_upstream", type=int)
-    parser.add_argument("-pd","--promoter_downstream", type=int)
-    parser.add_argument("-w","--bin_width", type=int, default=200)
-    parser.add_argument("-t","--file_total_hops_reads", help="Filename: total_hops_and_reads.tbl")
-    parser.add_argument("-b","--file_background", help="Filename: NOTF_Minus_Adh1_2015_17_combined.orf_hops")
-    parser.add_argument("-c","--dist_cutoff", default=200)
-    parser.add_argument("-bd","--binding_data", default="calling_cards", help="Choose from ['calling_cards',binding_potential']")
+    parser.add_argument("-g", "--orfs")
+    parser.add_argument("-i", "--input_dir")
+    parser.add_argument("-o", "--output_dir")
+    parser.add_argument("-m", "--feature_model", help="Choose from ['binned_promoter','highest_peaks','num_peaks,'linked_peaks','summarized_peaks']")
+    parser.add_argument("-pu", "--promoter_upstream", type=int)
+    parser.add_argument("-pd", "--promoter_downstream", type=int)
+    parser.add_argument("-w", "--bin_width", type=int, default=200)
+    parser.add_argument("-t", "--file_total_hops_reads", help="Filename: total_hops_and_reads.tbl")
+    parser.add_argument("-b", "--file_background", help="Filename: NOTF_Minus_Adh1_2015_17_combined.orf_hops")
+    parser.add_argument("-c", "--dist_cutoff", default=200)
+    parser.add_argument("-bd", "--binding_data", default="calling_cards", help="Choose from ['calling_cards',binding_potential']")
     parsed = parser.parse_args(argv[1:])
     return parsed
 
@@ -43,14 +44,20 @@ def load_total_hops_and_reads(file):
 
 def load_orf_hops(file):
 	## load as data frame
-	return pd.read_csv(file, delimiter='\t', usecols=[1,3,4,7,9,11,12], header=None, 
-						names=['Hop_pos','Hop_ID','Reads','Orf_pos','Orf','Strand','Dist'])
+	return pd.read_csv(file, delimiter='\t', usecols=[1,3,4,7,9,11,12], 
+						header=None, names=['Hop_pos','Hop_ID','Reads',
+						'Orf_pos','Orf','Strand','Dist'])
 
 
 def load_orf_peaks(file):
 	## load as data frame
-	return pd.read_csv(file, delimiter="\t", usecols=[0,9,10,11,12], header=None, skiprows=1,
-						names=["Orf","TPH","RPH","Strand","Dist"])
+	return pd.read_csv(file, delimiter="\t", usecols=[0,9,10,11,12], header=None,
+						 skiprows=1, names=["Orf","TPH","RPH","Strand","Dist"])
+
+
+def load_sig_prom(file):
+	return pd.read_csv(file, delimiter="\t", usecols=[0,10], header=None, 
+						skiprows=1, names=["Orf","Poisson_Pval"])
 
 
 def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, expt_totals=None, bkgd=None, bkgd_totals=None):
@@ -125,6 +132,58 @@ def generate_binned_hop_features(binding_data, bin_width, prom_range, expt, expt
 	return feature_mtx
 
 
+def generate_single_hop_features(orfs, prom_range, expt, expt_totals, bkgd, bkgd_totals, poisson_pval):
+	## initialize feature matrix
+	feature_header = ['tph_total', 'rph_total', 'logrph_total', 
+					'tph_bs_total', 'rph_bs_total', 'logrph_bs_total', 
+					'-log_p']
+	feature_mtx = np.zeros((len(orfs), len(feature_header)))
+	## iteratre thru orfs to parse out the hops and reads
+	orf_counter = 0
+	for i in range(len(orfs)):
+		orf = orfs[i]
+		orf_counter += 1
+		if orf_counter % 1000 == 0:
+			print "Analyzing "+str(orf_counter)+"th orf"
+		## assign normalized experiment hops and reads to bins
+		if orf in list(expt["Orf"]):
+			for j, row in expt.loc[expt["Orf"] == orf].iterrows():
+				expt_dist = row["Dist"]
+				if expt_dist >= prom_range[0] and expt_dist <= prom_range[1]:
+					curr_tph = 100000/expt_totals["hops"]
+					curr_rph = row["Reads"] * 100000/expt_totals["reads"]
+					feature_mtx[i, 0] += curr_tph
+					feature_mtx[i, 1] += curr_rph
+					feature_mtx[i, 2] += np.log2(curr_rph +1) ## add pseudocount
+					feature_mtx[i, 3] += curr_tph
+					feature_mtx[i, 4] += curr_rph
+					feature_mtx[i, 5] += np.log2(curr_rph +1) ## add pseudocount
+
+		## subtract normalized background hops and reads in bins
+		if orf in list(bkgd["Orf"]):
+			for j, row in bkgd.loc[bkgd["Orf"] == orf].iterrows():
+				bkgd_dist = row["Dist"]
+				if bkgd_dist >= prom_range[0] and bkgd_dist <= prom_range[1]:
+					curr_tph = 100000/bkgd_totals["hops"]
+					curr_rph = row["Reads"] * 100000/bkgd_totals["reads"]
+					feature_mtx[i, 3] -= curr_tph
+					feature_mtx[i, 4] -= curr_rph
+					feature_mtx[i, 5] -= np.log2(curr_rph +1)
+
+		## add Poisson p-value
+		if orf in list(poisson_pval["Orf"]):
+			p = poisson_pval.loc[poisson_pval["Orf"] == orf, 
+								"Poisson_Pval"].values[0]
+			feature_mtx[i, 6] = -np.log10(p + 10**(-25))
+
+	## set negative entries to zero and reformat feature matrix
+	feature_mtx[feature_mtx < 0] = 0
+	feature_mtx = np.hstack(( orfs[np.newaxis].T, feature_mtx ))
+	feature_mtx = np.vstack(( np.array(['#orf']+feature_header)[np.newaxis], feature_mtx ))
+
+	return feature_mtx
+
+
 def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_dist=-1200):
 	## create peak dictionary
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
@@ -151,6 +210,7 @@ def generate_highest_peaks_features(peaks_df, sort_by="TPH", num_peaks=1, max_di
 	feature_mtx = np.vstack((np.array(header)[np.newaxis], feature_mtx))
 	return feature_mtx
 
+
 def generate_num_peaks_features(peaks_df, sort_by="TPH", max_dist=-1200):
 	## create peak dictionary
 	feature_dict = generate_linked_peaks_features(peaks_df, sort_by)
@@ -176,6 +236,7 @@ def generate_num_peaks_features(peaks_df, sort_by="TPH", max_dist=-1200):
 	header += ["num_peaks"]
 	feature_mtx = np.vstack((np.array(header)[np.newaxis], feature_mtx))
 	return feature_mtx
+
 
 def generate_linked_peaks_features(peaks_df, sort_by="TPH"):
 	feature_dict = {}
@@ -312,15 +373,16 @@ def main(argv):
 		if parsed.binding_data == "binding_potential":
 			files_experiment = glob.glob(parsed.input_dir +'/*.orf_hops')
 			for file_in in files_experiment:
-				file_in_basename = os.path.basename(file_in).split(".")[0]
-				print "... working on", file_in_basename
+				tf = os.path.basename(file_in).split(".")[0]
+				print "... working on", tf
 				experiment = load_orf_hops(file_in)
 				feature_matrix = generate_binned_hop_features(parsed.binding_data, parsed.bin_width, promoter_range, experiment)
-				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
+				file_output = parsed.output_dir +"/"+ tf +".cc_feature_matrix.binned_promoter.txt"
 				write_feature_matrix(file_output, feature_matrix)
 
 		elif parsed.binding_data == "calling_cards":
 			## get total hops and reads, and background data
+			orfs = np.loadtxt(parsed.orfs, dtype=str)
 			totals_dict = load_total_hops_and_reads(parsed.file_total_hops_reads)
 			file_basename_background = os.path.splitext(os.path.basename(parsed.file_background))[0]
 			background_totals = totals_dict[file_basename_background]
@@ -331,51 +393,58 @@ def main(argv):
 			# if parsed.file_background in files_experiment:
 			# 	files_experiment.remove(parsed.file_background)
 			for file_in in files_experiment:
-				file_in_basename = os.path.basename(file_in).split(".")[0]
-				print "... working on", file_in_basename
-				experiment_totals = totals_dict[file_in_basename]
+				tf = os.path.basename(file_in).split(".")[0]
+				file_in2 = parsed.input_dir +'/'+ tf +'.sig_prom.txt'
+				print "... working on", tf
+				experiment_totals = totals_dict[tf]
 				experiment = load_orf_hops(file_in)
-				feature_matrix = generate_binned_hop_features(parsed.binding_data,
-											parsed.bin_width, promoter_range,
-											experiment, background,
-											experiment_totals, background_totals)
+				poisson_pval = load_sig_prom(file_in2)
+
 				# feature_matrix = generate_binned_hop_features(parsed.binding_data,
 				# 							parsed.bin_width, promoter_range,
-				# 							experiment, experiment_totals)
-				file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.binned_promoter.txt"
+				# 							experiment, experiment_totals, 
+				# 							background, background_totals)
+				# file_output = parsed.output_dir +"/"+ tf +".cc_feature_matrix.binned_promoter.txt"
+				# write_feature_matrix(file_output, feature_matrix)
+
+				feature_matrix = generate_single_hop_features(orfs, promoter_range,
+											experiment, experiment_totals, 
+											background, background_totals,
+											poisson_pval)
+				file_output = parsed.output_dir +"/"+ tf +".cc_single_feature_matrix.txt"
 				write_feature_matrix(file_output, feature_matrix)
 
 	elif parsed.feature_model == "highest_peaks":
 		## generate features in a linked list (json)
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
-			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print "... working on", file_in_basename
+			tf = os.path.basename(file_in).split(".")[0]
+			print "... working on", tf
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_matrix = generate_highest_peaks_features(peaks_dataframe, "RPH", 2)
-			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.highest_peaks.txt"
+			file_output = parsed.output_dir +"/"+ tf +".cc_feature_matrix.highest_peaks.txt"
 			write_feature_matrix(file_output, feature_matrix)
 
 	elif parsed.feature_model == "num_peaks":
 		## generate features in a linked list (json)
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.200bp')
 		for file_in in files_experiment:
-			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print "... working on", file_in_basename
+			tf = os.path.basename(file_in).split(".")[0]
+			print "... working on", tf
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_matrix = generate_num_peaks_features(peaks_dataframe, "RPH")
-			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.num_peaks.txt"
+			file_output = parsed.output_dir +"/"+ tf +".cc_feature_matrix.num_peaks.txt"
 			write_feature_matrix(file_output, feature_matrix)
 
 	elif parsed.feature_model == "linked_peaks":
 		## generate features in a linked list (json)
 		files_experiment = glob.glob(parsed.input_dir +'/*.orf_peaks.'+ parsed.dist_cutoff +'bp')
 		for file_in in files_experiment:
-			file_in_basename = os.path.basename(file_in).split(".")[0]
-			print "... working on", file_in_basename
+			tf = os.path.basename(file_in).split(".")[0]
+			print "... working on", tf
 			peaks_dataframe = load_orf_peaks(file_in)
 			feature_dict = generate_linked_peaks_features(peaks_dataframe, "TPH")
-			file_output = parsed.output_dir +"/"+ file_in_basename +".cc_feature_matrix.linked_peaks.json"
+			file_output = parsed.output_dir +"/"+ tf +".cc_feature_matrix.linked_peaks.json"
 			write_feature_dict(file_output, feature_dict)  	
 
 	elif parsed.feature_model == "summarized_peaks":
