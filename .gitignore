@@ -1,3 +1,5 @@
-*
-!scripts/*
+*/
+scripts/*.pyc
 !.gitignore
+!README.md
+!scripts/
