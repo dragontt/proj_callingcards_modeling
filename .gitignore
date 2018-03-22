@@ -1,13 +1,4 @@
-Yeast_remapped_Jun_2017/output_and_analysis/
-Yeast_remapped_Jun_2017/output_and_analysis.v2/
-Yeast_remapped_Jun_2017/raw
-Yeast_Brent_Collab_Aug_2014/
-archive/
+*
 scripts/*.pyc
-output/*
+!scripts/
 !output/.gitignore
-!output/orf_coding_all_R61-1-1_20080606.promoter.bed
-resources/*
-!resources/orf_coding_all_R61-1-1_20080606.fasta
-!resources/NOTF_Minus_Adh1_2015_17_combined.gnashy
-!resources/optimized_cc_subset.txt
