@@ -245,12 +245,12 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
 			print hyparam
 		else:
-			# hyparam = {"n_estimators": 20, 
-			# 			"max_depth": 3, 
-			# 			"min_samples_leaf": 5}
-			hyparam = {"n_estimators": 200, 
-						"max_depth": 20, ##TODO: change depth
-						"min_samples_leaf": 1}
+			hyparam = {"n_estimators": 20, 
+						"max_depth": 3, 
+						"min_samples_leaf": 5}
+			# hyparam = {"n_estimators": 200, 
+			# 			"max_depth": 20, ##TODO: change depth
+			# 			"min_samples_leaf": 1}
 		## build model with desired hyperparameters
 		model = RandomForestClassifier(n_estimators=hyparam["n_estimators"], 
 										max_depth=hyparam["max_depth"],
@@ -330,7 +330,7 @@ def optimize_model_hyparam(X, y, classifier, use_BO):
 	if classifier == "RandomForestClassifier":
 		if use_BO:
 			gp_params = {"alpha": 1e-5}
-			hyparam_distr = {"n_estimators": (20,200),
+			hyparam_distr = {"n_estimators": (10,200),
 							"max_depth": (1,20),
 							"min_samples_leaf": (1,20)}
 			# hyparam_distr = {"n_estimators": (20,500),

@@ -128,58 +128,63 @@ def save_excel(support_rates_dict, filename):
 		support_rates_dict[top_target]['output'].to_excel(writer, sheet_name=sheet)
 	writer.save()
 
-## main
-## excluded 'YJR060W':'Cbf1'
-# tf_names = {'YLR451W':'Leu3'}
-tf_names = {'YOR032C':'Hms1',
-			'YLR451W':'Leu3',
-			'YDR034C':'Lys14',
-			'YKL038W':'Rgt1',
-			'YOL067C':'Rtg1',
-			'YHL020C':'Opi1',
-			'YFR034C':'Pho4',
-			'YLR403W':'Sfp1',
-			'YJL056C':'Zap1'} 
 
-header = ['label', 'tph_total', 'rph_total', 'logrph_total', 
-			'tph_bs_total', 'rph_bs_total', 'logrph_bs_total', '-log_p']
-top_targets = [10, 25, 50, 100, 300]
-support_rates_dict = {}
+def main():
+	## excluded 'YJR060W':'Cbf1'
+	# tf_names = {'YLR451W':'Leu3'}
+	tf_names = {'YOR032C':'Hms1',
+				'YLR451W':'Leu3',
+				'YDR034C':'Lys14',
+				'YKL038W':'Rgt1',
+				'YOL067C':'Rtg1',
+				'YHL020C':'Opi1',
+				'YFR034C':'Pho4',
+				'YLR403W':'Sfp1',
+				'YJL056C':'Zap1'} 
 
-for sys_name, common_name in tf_names.iteritems():
-	print '... working on %s\t' % common_name
-	file_cc = "CCProcess_16TFs/" + sys_name + ".cc_single_feature_matrix.txt"
-	file_zev = "McIsaac_ZEV_DE/" + sys_name + "-15min.DE.txt"
-	data = combine_data(file_cc, file_zev)
-	fig_filename = "analysis_single_cc_feature/precision_ranking."+ common_name +".pdf"
-	# plot_support_rate(data, header, fig_filename, set_tie_rank=False)
+	header = ['label', 'tph_total', 'rph_total', 'logrph_total', 
+				'tph_bs_total', 'rph_bs_total', 'logrph_bs_total', '-log_p']
+	top_targets = [10, 25, 50, 100, 300]
+	support_rates_dict = {}
 
-	## store specific support rates
+	for sys_name, common_name in tf_names.iteritems():
+		print '... working on %s\t' % common_name
+		file_cc = "CCProcessed_16TFs/" + sys_name + ".cc_single_feature_matrix.txt"
+		file_zev = "McIsaac_ZEV_DE/" + sys_name + "-15min.DE.txt"
+		data = combine_data(file_cc, file_zev)
+		fig_filename = "analysis_single_cc_feature/simple_ranking."+ common_name +".pdf"
+		plot_support_rate(data, header, fig_filename, set_tie_rank=False)
+
+		## store specific support rates
+		for top_target in top_targets:
+			support_rate = cal_support_rates2(data, header, top_target)
+			if top_target not in support_rates_dict.keys():
+				support_rates_dict[top_target] = {}
+			support_rates_dict[top_target][common_name] = support_rate
+
+	## add average of each predictor
+	detailed_header = ['Transpositions per 100k', 
+						'Reads per 100k', 
+						'Transpositions weighted by log(reads) per 100k', 
+						'Background subtracted transpositions per 100k', 
+						'Background subtracted reads per 100k', 
+						'Background subtracted transpositions weighted by log(reads) per 100k',
+						'Poisson score, -log(p)']
 	for top_target in top_targets:
-		support_rate = cal_support_rates2(data, header, top_target)
-		if top_target not in support_rates_dict.keys():
-			support_rates_dict[top_target] = {}
-		support_rates_dict[top_target][common_name] = support_rate
+		output = pd.DataFrame(support_rates_dict[top_target], index=detailed_header)
+		num_predictors, num_tfs = output.shape
+		rank_mtx = np.zeros((num_predictors, num_tfs))
+		for i in range(num_tfs):
+			rank_mtx[:,i] = num_predictors+1 - rankdata(output.iloc[:,i], method='max')
+		avg_rank = np.mean(rank_mtx, axis=1)
+		med_rank = np.median(rank_mtx, axis=1)
+		output = pd.concat([output, pd.DataFrame({'Average rank': avg_rank, 'Median rank': med_rank}, index=detailed_header)], axis=1)
+		support_rates_dict[top_target]['output'] = output
 
-## add average of each predictor
-detailed_header = ['Transpositions per 100k', 
-					'Reads per 100k', 
-					'Transpositions weighted by log(reads) per 100k', 
-					'Background subtracted transpositions per 100k', 
-					'Background subtracted reads per 100k', 
-					'Background subtracted transpositions weighted by log(reads) per 100k',
-					'Poisson score, -log(p)']
-for top_target in top_targets:
-	output = pd.DataFrame(support_rates_dict[top_target], index=detailed_header)
-	num_predictors, num_tfs = output.shape
-	rank_mtx = np.zeros((num_predictors, num_tfs))
-	for i in range(num_tfs):
-		rank_mtx[:,i] = num_predictors+1 - rankdata(output.iloc[:,i], method='max')
-	avg_rank = np.mean(rank_mtx, axis=1)
-	med_rank = np.median(rank_mtx, axis=1)
-	output = pd.concat([output, pd.DataFrame({'Average rank': avg_rank, 'Median rank': med_rank}, index=detailed_header)], axis=1)
-	support_rates_dict[top_target]['output'] = output
+	filename = "analysis_single_cc_feature/single_predictor_comparison.xlsx"
+	save_excel(support_rates_dict, filename)
 
-filename = "analysis_single_cc_feature/single_predictor_comparison.xlsx"
-save_excel(support_rates_dict, filename)
+
+if __name__ == "__main__":
+	main()
 
