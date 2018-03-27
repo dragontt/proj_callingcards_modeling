@@ -29,6 +29,7 @@ import argparse
 import pysam
 import pandas as pd
 import csv
+import sys
 
 def sort_gnashy_file(gnashyfilename):
     gnashy_frame = pd.read_csv(gnashyfilename,delimiter='\t',header=None,names=['chr','pos','reads'])

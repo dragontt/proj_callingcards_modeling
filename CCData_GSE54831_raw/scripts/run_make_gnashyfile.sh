@@ -11,4 +11,4 @@
 module load pysam/0.8.3
 module load pandas/0.17.1
 
-python make_gnashyfile.py -p ../output_and_analysis.v2
+python make_gnashyfile.py -p ../output_and_analysis/

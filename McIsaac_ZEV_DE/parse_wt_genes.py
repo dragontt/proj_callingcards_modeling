@@ -9,8 +9,7 @@ for i, row in data.iterrows():
 
 ## parse gene expression at time 0
 data = pd.read_csv("final_data%2Fyeast_data_table_20171115.tsv", delimiter='\t')
-data0 = data[data["time"] == 0]
-data0 = data0[['TF','time','GeneName','r_g_median']]
+data0 = data[data["time"] == 0][['TF', 'strain','time','GeneName','r_g_median']]
 
 ## save wt expression file
 for tf in pd.unique(data0['TF']):
@@ -18,6 +17,7 @@ for tf in pd.unique(data0['TF']):
 	output_file = 'all_expression/'+ conv_dict[tf] +'.WT.txt' if tf in conv_dict else 'all_expression/'+ tf +'.WT.txt'
 	## get expression data of each TF induction
 	wt_expr = data0[data0['TF']==tf]['r_g_median']
+	wt_expr = wt_expr.reset_index().drop(['index'], axis=1)
 	## gene name conversion
 	genes_symbol = data0[data0['TF']==tf]['GeneName'].tolist()
 	genes_systematic = pd.Series([conv_dict[genes_symbol[i]] if genes_symbol[i] in conv_dict else genes_symbol[i] for i in range(len(genes_symbol))], name='GeneSystematic')

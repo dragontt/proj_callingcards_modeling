@@ -20,7 +20,7 @@ for (tf in tfs) {
     	next
     }
 
-    cat("... working on ", tf, "\n")
+    cat("... working on\t", tf)
     ## choose one of the strains
     strains <- unique(expr_mtx$strain)
     expr_mtx <- expr_mtx[expr_mtx$strain == strains[1], c('gene', 'cleaned')]
@@ -28,6 +28,7 @@ for (tf in tfs) {
     expr_mtx <- cbind(yeast_ids$Systematic[match(expr_mtx$gene, yeast_ids$Gene)], expr_mtx)
     colnames(expr_mtx)[1] <- "#gene_sys"
     tf_systematic <- yeast_ids$Systematic[yeast_ids$Gene == tf]
+    cat("\t", tf_systematic, "\n")
     ## write output
     write.table(expr_mtx, file=paste0("all_expression/",tf_systematic,"-15min.DE.txt"), quote=F, sep="\t", row.names=F)
 }

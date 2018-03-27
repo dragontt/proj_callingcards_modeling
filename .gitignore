@@ -3,3 +3,7 @@ scripts/*.pyc
 !.gitignore
 !README.md
 !scripts/
+!CCData_GSE54831_raw/scripts/*
+!McIsaac_ZEV_DE/*            
+!Yeast_remapped_Jun_2017/scripts/*
+
