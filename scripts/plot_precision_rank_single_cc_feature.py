@@ -83,7 +83,8 @@ def cal_support_rates(data, step, bin, set_tie_rank=False):
 def cal_support_rates2(data, header, top_target):
 	support_rates = []
 	for i in range(1,len(header)):
-		x = data[data[:,i] >= data[top_target,i] ,0]
+		data2 = np.array(sorted(data[:,[0,i]], key=lambda k: (k[1],k[0])))[::-1]
+		x = data2[data2[:,1] >= data2[top_target,1] ,0]
 		r = float(len(x[x==1])) / len(x)
 		support_rates.append(r)
 	return support_rates
