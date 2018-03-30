@@ -174,9 +174,10 @@ def main(argv):
     data = data[:, [0,data_header.index(cc_feature)]]
     comparison_data['simple'] = data
     comparison_data['rf_cv10'] = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=10, opt_param=True)
-    # comparison_data['rf_cv100'] = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=100, opt_param=True)
+    comparison_data['rf_cv100'] = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=100, opt_param=True)
     ## make comparison plot
     line_colors = [color_theme['blue'], 
+                    color_theme['orange'], 
                     color_theme['black']]
     fig_filename = parsed.output_dir + "rf_ranking_bo."+ common_name +".pdf"
     plot_support_rate(comparison_data, ['rf_cv10', 'rf_cv100','simple'], line_colors, fig_filename, set_tie_rank=False)
