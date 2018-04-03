@@ -232,17 +232,17 @@ def model_holdout_feature(X, y, features, sample_name, algorithm, is_classif, nu
 	return (scores_test, scores_holdout, features_var)
 
 
-def construct_classification_model(X, y, classifier, opt_param=False):
+def construct_classification_model(X, y, algorithm, opt_param=False):
 	"""
-	classifier - chose from ["RandomForestClassifier", 
+	algorithm - chose from ["RandomForestClassifier", 
 							"GradientBoostingClassifier"]
 	opt_param - use Bayesian Optimization or Random Search to tune the hyperparameters
 	"""
-	if classifier == "RandomForestClassifier":
+	if algorithm == "RandomForestClassifier":
 		if opt_param: 
 			## hyperparameter opitimization
 			use_BO = True
-			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
+			hyparam = optimize_model_hyparam(X, y, algorithm, use_BO)
 			print hyparam
 		else:
 			hyparam = {"n_estimators": 20, 
@@ -257,11 +257,11 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 										min_samples_leaf=hyparam["min_samples_leaf"],
 										class_weight="balanced")
 
-	elif classifier == "GradientBoostingClassifier":
+	elif algorithm == "GradientBoostingClassifier":
 		if opt_param: 
 			## hyperparameter opitimization
 			use_BO = True
-			hyparam = optimize_model_hyparam(X, y, classifier, use_BO)
+			hyparam = optimize_model_hyparam(X, y, algorithm, use_BO)
 			print hyparam
 		else:
 			hyparam = {"n_estimators": 20, 
@@ -274,10 +274,16 @@ def construct_classification_model(X, y, classifier, opt_param=False):
 											subsample=hyparam["subsample"],
 											min_samples_leaf=hyparam["min_samples_leaf"])
 
+	elif algorithm == "LogisticRegression":
+		model = LogisticRegression(penalty="l2", 
+									tol=.0001, 
+									C=1.0, 
+									class_weight=None)
+
 	else: 
-		sys.exit(classifier +" not implemented yet!")
+		sys.exit(algorithm +" not implemented yet!")
 	
-	## other potential classifier
+	## other potential algorithm
 	# model = KNeighborsClassifier() 
 	# model = NuSVC(nu=.5, kernel="rbf")
 	# model = LinearSVC()

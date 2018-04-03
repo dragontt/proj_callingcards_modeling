@@ -147,40 +147,42 @@ def main(argv):
                 'tph_bs_total', 'rph_bs_total', 'logrph_bs_total', '-log_p']
     cc_feature = 'tph_bs_total'
 
-    # with open(parsed.tfs, "r") as f:
-    #     tf_names = json.load(f)
-
-    # for sys_name, common_name in tf_names.iteritems():
-    #     sys.stderr.write("... working on %s\t" % common_name)
-    #     ## cv learning model
-    #     file_cc = parsed.cc_dir + sys_name + cc_filename_suffix
-    #     file_de = parsed.de_dir + sys_name + de_filename_suffix
-    #     data = combine_data(file_cc, file_de)
-    #     data = data[:, [0,data_header.index(cc_feature)]]
-    #     rf_output = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=10)
-    #     ## simple ranking
-    #     comparison_data = {'simple': data, 'rf': rf_output}
-    #     ## make comparison plot
-    #     fig_filename = parsed.output_dir + "rf_ranking."+ common_name +".pdf"
-    #     plot_support_rate(comparison_data, ['rf','simple'], fig_filename, set_tie_rank=False)
-
     sys_name, common_name = parsed.tf_names.split(",")
     sys.stderr.write("... working on %s\t" % common_name)
     ## cv learning model
-    comparison_data = {}
+    result_dict = {}
     file_cc = parsed.cc_dir + sys_name + cc_filename_suffix
     file_de = parsed.de_dir + sys_name + de_filename_suffix
     data = combine_data(file_cc, file_de)
     data = data[:, [0,data_header.index(cc_feature)]]
-    comparison_data['simple'] = data
-    comparison_data['rf_cv10'] = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=10, opt_param=True)
-    comparison_data['rf_cv100'] = cv_model(data[:,1:], data[:,0], "RandomForestClassifier", nfolds=100, opt_param=True)
+    result_dict['simple'] = data
+    ## set algorithm and hyperparameter optimization
+    # ml_algo = ("RandomForestClassifier", "rf")
+    # ml_algo = ("GradientBoostingClassifier", "gb")
+    ml_algo = ("LogisticRegression", "lr")
+    opt_hyparam = False
+    opt_suffix = '_bo' if opt_hyparam else '' 
+    result_dict[ml_algo[1]+'_cv10'] = cv_model(data[:,1:], data[:,0], 
+                            ml_algo[0], nfolds=10, opt_param=opt_hyparam)
+    result_dict[ml_algo[1]+'_cv100'] = cv_model(data[:,1:], data[:,0], 
+                            ml_algo[0], nfolds=100, opt_param=opt_hyparam)
+    ## save cv predicted probs
+    for k in result_dict.keys():
+        if k == 'simple':
+            cv_filename = parsed.output_dir + k +"."+ common_name +".txt"
+        else:
+            cv_filename = parsed.output_dir + k + opt_suffix +"."+ common_name +".txt"
+        np.savetxt(cv_filename, result_dict[k], delimiter="\t")
     ## make comparison plot
+    labels = [ml_algo[1] +'_cv10', 
+                ml_algo[1] +'_cv100', 
+                'simple']
     line_colors = [color_theme['blue'], 
                     color_theme['orange'], 
                     color_theme['black']]
-    fig_filename = parsed.output_dir + "rf_ranking_bo."+ common_name +".pdf"
-    plot_support_rate(comparison_data, ['rf_cv10', 'rf_cv100','simple'], line_colors, fig_filename, set_tie_rank=False)
+    fig_filename = parsed.output_dir + ml_algo[1] +"_ranking"+ opt_suffix +"."+ common_name +".pdf"
+    plot_support_rate(result_dict, labels, line_colors, 
+                        fig_filename, set_tie_rank=False)
 
 
 if __name__ == "__main__":
