@@ -43,9 +43,11 @@ def parse_args(argv):
     return parsed
 
 
-def combine_data(file_cc, file_de):
+def combine_data(file_cc, file_de, file_hm=None):
     cc = np.loadtxt(file_cc, dtype=str)
     de = np.loadtxt(file_de, dtype=str, usecols=[0,2])
+    if file_hm is not None:
+        hm = np.loadtxt(file_hm, dtype=str, skiprows=1)
 
     de_abs = np.abs(np.array(de[:,1], dtype=float))
     five_percentile = np.sort(de_abs)[::-1][int(np.floor(len(de)*.05))]
@@ -55,12 +57,19 @@ def combine_data(file_cc, file_de):
         indx_pos = np.where(de_abs >= five_percentile)[0]
     de[:,1] = -1
     de[indx_pos,1] = 1
-    orfs = np.intersect1d(cc[:,0], de[:,0])
+
+    if file_hm is not None:
+        orfs = sorted(list(set(cc[:,0]) & set(de[:,0]) & set(hm[:,0])))
+    else:
+        orfs = sorted(list(set(cc[:,0]) & set(de[:,0])))
     data = []
     for orf in orfs:
         indx_cc = np.where(cc[:,0] == orf)[0][0]
         indx_de = np.where(de[:,0] == orf)[0][0]
-        row = [de[indx_de,1]] + list(cc[indx_cc,1:])
+        row = [de[indx_de,1]] + list(cc[indx_cc,1:]) 
+        if file_hm is not None:
+            indx_hm = np.where(de[:,0] == orf)[0][0]
+            row += list(hm[indx_hm,1:])
         data.append(row)
     return np.array(data, dtype=float)
 
@@ -153,13 +162,18 @@ def main(argv):
     result_dict = {}
     file_cc = parsed.cc_dir + sys_name + cc_filename_suffix
     file_de = parsed.de_dir + sys_name + de_filename_suffix
-    data = combine_data(file_cc, file_de)
-    data = data[:, [0,data_header.index(cc_feature)]]
-    result_dict['simple'] = data
+
+    file_hm = "chromatin_access/output/chromatin_access_features.txt"
+    data = combine_data(file_cc, file_de, file_hm)
+    
+    feature_indx = [0,data_header.index(cc_feature)]
+    feature_indx += range(len(data_header), data.shape[1])
+    data = data[:, feature_indx]
+    result_dict['simple'] = data[:,[0,1]]
     ## set algorithm and hyperparameter optimization
     # ml_algo = ("RandomForestClassifier", "rf")
-    # ml_algo = ("GradientBoostingClassifier", "gb")
-    ml_algo = ("LogisticRegression", "lr")
+    ml_algo = ("GradientBoostingClassifier", "gb")
+    # ml_algo = ("LogisticRegression", "lr")
     opt_hyparam = False
     opt_suffix = '_bo' if opt_hyparam else '' 
     result_dict[ml_algo[1]+'_cv10'] = cv_model(data[:,1:], data[:,0], 

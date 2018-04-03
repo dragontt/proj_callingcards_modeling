@@ -11,6 +11,6 @@
 read sys_name common_name < <( sed -n ${SLURM_ARRAY_TASK_ID}p CCProcessed_16TFs/valid_CCxZEV_TFs.txt )
 set -e 
 
-output_dir=analysis_single_cc_feature/
+output_dir=analysis_cc_hm_feature/
 mkdir -p ${output_dir}
 python -u scripts/fit_rf_model2.py -c CCProcessed_16TFs/ -d McIsaac_ZEV_DE/ -o ${output_dir} --tf_names ${sys_name},${common_name}
